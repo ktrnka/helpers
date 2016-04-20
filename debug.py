@@ -129,7 +129,6 @@ class ExplanationTests(unittest.TestCase):
 
             self.assertLess(abs(input_gradient[1]), abs(input_gradient[0]))
 
-
     def test_explain_random_forest(self):
         X, Y = self._make_data(100)
         X_train, X_test, Y_train, Y_test = sklearn.cross_validation.train_test_split(X, Y, test_size=0.2)

@@ -32,8 +32,6 @@ def benchmark_size(n, base_iterations=100, min_seconds_test=2., dtype="numpy.flo
         results[f]["unit_time"] = time / n_iter
         results[f]["n_iter"] = n_iter
 
-        # print(f, n, 1000. * time / n_iter, n_iter)
-
     return results
 
 

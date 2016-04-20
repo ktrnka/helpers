@@ -17,7 +17,7 @@ import sklearn.utils
 import theano
 import os
 
-import helpers.general
+from . import general
 
 _he_activations = {"relu"}
 
@@ -25,16 +25,6 @@ _he_activations = {"relu"}
 def set_theano_float_precision(precision):
     assert precision in {"float32", "float64"}
     theano.config.floatX = precision
-
-
-def disable_theano_gc():
-    theano.config.allow_gc = False
-
-
-def enable_openmp():
-    print("Current OpenMP value:", theano.config.openmp)
-    theano.config.openmp = True
-    os.environ["OMP_NUM_THREADS"] = "2"
 
 
 class NnRegressor(sklearn.base.BaseEstimator):
@@ -70,7 +60,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
         self.schedule = schedule
         self.extra_callback = None
 
-        self.logger = helpers.general.get_class_logger(self)
+        self.logger = general.get_class_logger(self)
 
         self.model_ = None
         self.history_df_ = None
@@ -235,7 +225,8 @@ class RnnRegressor(NnRegressor):
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
                                            clip_gradient_norm=clip_gradient_norm, val=val, assert_finite=assert_finite,
-                                           history_file=history_file, optimizer=optimizer, input_dropout=input_dropout, activation=activation)
+                                           history_file=history_file, optimizer=optimizer, input_dropout=input_dropout,
+                                           activation=activation)
 
         self.posttrain = posttrain
         self.num_units = num_units
@@ -245,10 +236,10 @@ class RnnRegressor(NnRegressor):
         self.use_maxnorm = True
         self.pretrain = pretrain
 
-        self.logger = helpers.general.get_class_logger(self)
+        self.logger = general.get_class_logger(self)
 
     def _transform_input(self, X):
-        return helpers.general.prepare_time_matrix(X, self.time_steps, fill_value=0)
+        return general.prepare_time_matrix(X, self.time_steps, fill_value=0)
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
@@ -312,7 +303,7 @@ class RnnRegressor(NnRegressor):
 
 
 def make_learning_rate_schedule(initial_value, exponential_decay=0.99, kick_every=10000):
-    logger = helpers.general.get_function_logger()
+    logger = general.get_function_logger()
 
     def schedule(epoch_num):
         lr = initial_value * (10 ** int(epoch_num / kick_every)) * exponential_decay ** epoch_num
@@ -337,7 +328,7 @@ class AdaptiveLearningRateScheduler(keras.callbacks.Callback):
         self.window = window
 
         self.metric_ = []
-        self.logger_ = helpers.general.get_class_logger(self)
+        self.logger_ = general.get_class_logger(self)
 
     def on_epoch_begin(self, epoch, logs={}):
         assert hasattr(self.model.optimizer, 'lr'), 'Optimizer must have a "lr" attribute.'

@@ -2,7 +2,7 @@ import unittest
 
 import numpy
 
-import helpers.general
+from .. import general
 
 
 class TimeShiftTests(unittest.TestCase):
@@ -14,13 +14,13 @@ class TimeShiftTests(unittest.TestCase):
     def test_errors(self):
         X = self._get_data()
 
-        self.assertRaises(ValueError, helpers.general.prepare_time_matrix, X, 0)
-        self.assertRaises(ValueError, helpers.general.prepare_time_matrix, X, -4)
+        self.assertRaises(ValueError, general.prepare_time_matrix, X, 0)
+        self.assertRaises(ValueError, general.prepare_time_matrix, X, -4)
 
     def test_identity(self):
         X = self._get_data()
 
-        X_1 = helpers.general.prepare_time_matrix(X, 1)
+        X_1 = general.prepare_time_matrix(X, 1)
         self.assertEqual(X.shape[0], X_1.shape[0])
         self.assertEqual(X.shape[1], X_1.shape[2])
         self.assertEqual(1, X_1.shape[1])
@@ -34,7 +34,7 @@ class TimeShiftTests(unittest.TestCase):
         self.assertEqual(X[5, 1], 25)
         self.assertEqual(X[5, 2], 125)
 
-        X_time = helpers.general.prepare_time_matrix(X, 5)
+        X_time = general.prepare_time_matrix(X, 5)
 
         self.assertSequenceEqual((X.shape[0], 5, X.shape[1]), X_time.shape)
 
@@ -64,7 +64,7 @@ class TimeShiftTests(unittest.TestCase):
 
     def test_no_rotation(self):
         X = self._get_data(10)
-        X_time = helpers.general.prepare_time_matrix(X, 5, fill_value=-1)
+        X_time = general.prepare_time_matrix(X, 5, fill_value=-1)
 
         self.assertEqual(X_time[5, -5, 0], 1)
         self.assertEqual(X_time[5, -5, 1], 1)

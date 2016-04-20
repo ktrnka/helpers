@@ -4,14 +4,11 @@ from __future__ import unicode_literals
 import datetime
 import inspect
 import logging
-import os
-
+import os.path
 import time
-
 import numpy
-
-import helpers.sk
 import re
+
 
 def number_string(number, singular_unit, plural_unit, format_string="{} {}"):
     return format_string.format(number, singular_unit if number == 1 else plural_unit)
@@ -67,10 +64,11 @@ def _with_extra(filename, extra_info):
 def with_num_features(filename, X):
     return _with_extra(filename, "{}_features".format(X.shape[1]))
 
+
 def camel_to_snake(name):
     """From http://stackoverflow.com/a/1176023/1492373"""
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 def with_model_name(filename, model, snake_case=False):
