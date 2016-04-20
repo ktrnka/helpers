@@ -18,7 +18,7 @@ import sklearn.linear_model
 import sklearn.metrics
 import sklearn.utils.random
 
-from . import general
+import helpers.general
 
 def _convert_scale(target_value, max_value):
     """If target_value is float, mult with max_value otherwise take it straight"""
@@ -42,7 +42,7 @@ class SubspaceWrapper(sklearn.base.BaseEstimator):
         self.max_samples = max_samples
         self.max_features = max_features
 
-        self.logger_ = general.get_class_logger(self)
+        self.logger_ = helpers.general.get_class_logger(self)
         self.cols_ = None
         self.estimator_ = None
 
@@ -84,7 +84,7 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
         self.max_features = max_features
         self.feature_weight_getter = feature_weight_getter
 
-        self.logger = general.get_class_logger(self)
+        self.logger = helpers.general.get_class_logger(self)
         self.estimators_ = None
         self.num_features_ = None
 
@@ -431,8 +431,8 @@ class OutputTransformation(sklearn.base.BaseEstimator):
     outputs.
     """
 
-    def __init__(self, model, transformer):
-        self.estimator = model
+    def __init__(self, estimator, transformer):
+        self.estimator = estimator
         self.transformer = transformer
 
     def fit(self, X, Y):
@@ -443,6 +443,25 @@ class OutputTransformation(sklearn.base.BaseEstimator):
 
     def predict(self, X):
         return self.transformer.inverse_transform(self.estimator.predict(X))
+
+
+class QuickTransform(sklearn.base.TransformerMixin):
+    def __init__(self, transform_function, inverse_function):
+        self.transform_function = transform_function
+        self.inverse_function = inverse_function
+
+    def fit(self, data):
+        pass
+
+    def transform(self, data):
+        return self.transform_function(data)
+
+    def inverse_transform(self, transformed_data):
+        return self.inverse_function(transformed_data)
+
+    @staticmethod
+    def make_append_mean():
+        return QuickTransform(lambda Y: numpy.hstack([Y, Y.mean(axis=1).reshape(-1, 1)]), lambda Y: Y[:, :-1])
 
 
 def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "Classifier"}):

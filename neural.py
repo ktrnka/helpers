@@ -15,9 +15,8 @@ import pandas
 import sklearn
 import sklearn.utils
 import theano
-import os
 
-from . import general
+import helpers.general as general
 
 _he_activations = {"relu"}
 

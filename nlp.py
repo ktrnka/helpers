@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
-import sys
-import argparse
-import unittest
+
 import unicodedata
+import unittest
 
 _CHAR_TRANSLATIONS = {
     # chars to remove

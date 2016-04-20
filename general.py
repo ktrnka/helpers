@@ -9,6 +9,8 @@ import time
 import numpy
 import re
 
+from helpers.sk import get_model_name
+
 
 def number_string(number, singular_unit, plural_unit, format_string="{} {}"):
     return format_string.format(number, singular_unit if number == 1 else plural_unit)
@@ -72,7 +74,7 @@ def camel_to_snake(name):
 
 
 def with_model_name(filename, model, snake_case=False):
-    model_name = helpers.sk.get_model_name(model, format="{}_{}")
+    model_name = get_model_name(model, format="{}_{}")
     if snake_case:
         model_name = camel_to_snake(model_name)
     return _with_extra(filename, model_name)
