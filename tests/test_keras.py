@@ -37,6 +37,14 @@ def _build_summation_data(n, lag=4):
     return X[lag - 1:, :], Y
 
 
+def _build_summation_data_for_stateful(n, lag=4):
+    X = (numpy.random.rand(n, 1) > 0.5).astype(numpy.int16)
+
+    Y = moving_average(X, lag).reshape(-1, 1)
+
+    return X[lag - 1:, :], numpy.hstack([Y, numpy.roll(Y, lag, axis=0)])
+
+
 def _build_identity(n):
     X = numpy.random.rand(n, 1)
     return X, X
@@ -119,3 +127,56 @@ class ModelTests(unittest.TestCase):
         self.assertAlmostEqual(get_kicking_rate(50), 0.007783125570686419)
         self.assertAlmostEqual(get_kicking_rate(101), get_rate(101) * 10)
         self.assertAlmostEqual(get_kicking_rate(201), get_rate(201) * 100)
+
+    def test_stateful_padding(self):
+        X = numpy.random.rand(18, 6)
+        X2, inverter = neural.pad_to_batch(X, 5)
+
+        print("X", X.shape)
+        print("X2", X2.shape)
+        self.assertEqual(X.shape[1], X2.shape[1])
+        self.assertEqual(20, X2.shape[0])
+
+        self.assertTrue(numpy.array_equal(X, X2[:X.shape[0]]))
+
+        for row in range(X.shape[0], X2.shape[0]):
+            self.assertTrue(numpy.array_equal(X[-1], X2[row]))
+
+        self.assertTrue(numpy.array_equal(X, inverter(X2)))
+
+    def test_stateful_rnn(self):
+        X, Y = _build_summation_data(1000, lag=10)
+
+        # baseline linear regression
+        baseline_model = sklearn.linear_model.LinearRegression().fit(X, Y)
+
+        baseline_predictions = baseline_model.predict(X)
+        self.assertEqual(Y.shape, baseline_predictions.shape)
+        baseline_error = sklearn.metrics.mean_squared_error(Y, baseline_predictions)
+        self.assertLess(baseline_error, 0.1)
+
+        # test plain RNN
+        model = neural.RnnRegressor(num_epochs=200, batch_size=10, num_units=50, time_steps=10, early_stopping=True, verbose=1)
+        model.fit(X, Y)
+        vanilla_predictions = model.predict(X)
+
+        self.assertEqual(Y.shape, vanilla_predictions.shape)
+        vanilla_error = sklearn.metrics.mean_squared_error(Y, vanilla_predictions)
+
+        print("Vanilla RNN error", vanilla_error)
+
+        # should be more than 10x better
+        self.assertLessEqual(vanilla_error, baseline_error / 10)
+
+        # test stateful RNN
+        model = neural.RnnRegressor(num_epochs=200, batch_size=10, num_units=50, time_steps=10, early_stopping=True, stateful=True)
+        model.fit(X, Y)
+        stateful_predictions = model.predict(X)
+
+        self.assertEqual(Y.shape, stateful_predictions.shape)
+        error = sklearn.metrics.mean_squared_error(Y, stateful_predictions)
+
+        print("Stateful RNN error", error)
+
+        # should be more than 1.5x better
+        self.assertLessEqual(error, vanilla_error / 1.5)

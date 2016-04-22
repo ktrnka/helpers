@@ -79,8 +79,10 @@ class NnRegressor(sklearn.base.BaseEstimator):
     def _get_activation(self):
         if self.activation == "elu":
             return keras.layers.advanced_activations.ELU()
-        else:
+        elif self.activation:
             return keras.layers.core.Activation(self.activation)
+        else:
+            raise ValueError("No activation unit specified")
 
     def fit(self, X, y, **kwargs):
         self.set_params(**kwargs)
@@ -214,18 +216,26 @@ class NnRegressor(sklearn.base.BaseEstimator):
         self.history_df_.index.rename("epoch", inplace=True)
         self.history_df_.to_csv(self.history_file)
 
+def pad_to_batch(data, batch_size):
+    remainder = data.shape[0] % batch_size
+    if remainder == 0:
+        return data, lambda Y: Y
+
+    pad_after = [batch_size - remainder] + [0 for _ in data.shape[1:]]
+    paddings = [(0, p) for p in pad_after]
+    return numpy.pad(data, paddings, mode="edge"), lambda Y: Y[:-pad_after[0]]
 
 class RnnRegressor(NnRegressor):
     def __init__(self, num_units=50, time_steps=5, batch_size=100, num_epochs=100, unit="lstm", verbose=0,
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
-                 pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False):
+                 pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False):
         super(RnnRegressor, self).__init__(batch_size=batch_size, num_epochs=num_epochs, verbose=verbose,
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
                                            clip_gradient_norm=clip_gradient_norm, val=val, assert_finite=assert_finite,
                                            history_file=history_file, optimizer=optimizer, input_dropout=input_dropout,
-                                           activation=activation)
+                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes)
 
         self.posttrain = posttrain
         self.num_units = num_units
@@ -234,6 +244,10 @@ class RnnRegressor(NnRegressor):
         self.recurrent_dropout = recurrent_dropout
         self.use_maxnorm = True
         self.pretrain = pretrain
+        self.stateful = stateful
+
+        if stateful:
+            assert self.time_steps == self.batch_size
 
         self.logger = general.get_class_logger(self)
 
@@ -243,9 +257,6 @@ class RnnRegressor(NnRegressor):
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
         kwargs = {"output_dim": self.num_units}
-
-        if self.activation:
-            kwargs["activation"] = self.activation
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
@@ -259,15 +270,22 @@ class RnnRegressor(NnRegressor):
 
         X_time = self._transform_input(X)
 
+        if self.stateful:
+            X_time, _ = pad_to_batch(X_time, self.batch_size)
+            Y, _ = pad_to_batch(Y, self.batch_size)
+
         self.logger.debug("X takes %d mb", X.nbytes / 10e6)
         self.logger.debug("X_time takes %d mb", X_time.nbytes / 10e6)
 
-        model.add(keras.layers.noise.GaussianNoise(self.input_noise, input_shape=X_time.shape[1:]))
+        if self.stateful:
+            model.add(keras.layers.noise.GaussianNoise(self.input_noise, batch_input_shape=(self.batch_size,) + X_time.shape[1:]))
+        else:
+            model.add(keras.layers.noise.GaussianNoise(self.input_noise, input_shape=X_time.shape[1:]))
 
         if self.input_dropout:
             model.add(keras.layers.core.Dropout(self.input_dropout))
 
-        # hidden layer
+        # recurrent layer
         if self.unit == "lstm":
             model.add(keras.layers.recurrent.LSTM(**self._get_recurrent_layer_kwargs()))
         elif self.unit == "gru":
@@ -279,6 +297,17 @@ class RnnRegressor(NnRegressor):
         if self.dropout:
             model.add(keras.layers.core.Dropout(self.dropout))
 
+        # regular hidden layer(s)
+        if self.hidden_layer_sizes:
+            for layer_size in self.hidden_layer_sizes:
+                self.logger.warning("Adding FC-%d layer after RNN", layer_size)
+
+                model.add(keras.layers.core.Dense(output_dim=layer_size, **self._get_dense_layer_kwargs()))
+                model.add(self._get_activation())
+
+                # if self.dropout:
+                #     model.add(keras.layers.core.Dropout(self.dropout))
+
         # output layer
         model.add(keras.layers.core.Dense(output_dim=Y.shape[1], **self._get_dense_layer_kwargs()))
 
@@ -286,19 +315,37 @@ class RnnRegressor(NnRegressor):
         model.compile(loss="mse", optimizer=optimizer)
         self.model_ = model
 
-        if self.pretrain:
+        if self.pretrain and not self.stateful:
             self.model_.fit(X_time, Y, **self._get_fit_kwargs(X, batch_size_override=1, num_epochs_override=1))
 
         self._run_fit(X_time, Y)
 
-        if self.posttrain:
+        if self.posttrain and not self.stateful:
             self.model_.fit(X_time, Y, **self._get_fit_kwargs(X, disable_validation=True, num_epochs_override=5))
 
         return self
 
+    def _get_fit_kwargs(self, *args, **kwargs):
+        kwargs = super(RnnRegressor, self)._get_fit_kwargs(*args, **kwargs)
+
+        if self.stateful:
+            kwargs["shuffle"] = False
+            kwargs["validation_split"] = 0
+
+            self.logger.warning("Disabling validation split for stateful RNN training")
+
+        return kwargs
+
     def predict(self, X):
-        r = self._check_finite(self.model_.predict(self._transform_input(X)))
-        return r
+        inverse_trans = None
+        if self.stateful:
+            self.model_.reset_states()
+            X, inverse_trans = pad_to_batch(X, self.batch_size)
+        Y = self._check_finite(self.model_.predict(self._transform_input(X)))
+
+        if inverse_trans:
+            Y = inverse_trans(Y)
+        return Y
 
 
 def make_learning_rate_schedule(initial_value, exponential_decay=0.99, kick_every=10000):
