@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pandas
 
+from helpers.features import TimeRange, get_event_series
 from .. import general
 
 
@@ -79,3 +81,23 @@ class TimeShiftTests(unittest.TestCase):
         self.assertEqual(X_time[2, -3, 1], 0)
         self.assertEqual(X_time[2, -4, 1], -1)
         self.assertEqual(X_time[2, -5, 1], -1)
+
+
+class TimeRangeTests(unittest.TestCase):
+    def _make_time(self, start_time, duration_minutes=30):
+        duration = pandas.Timedelta(minutes=duration_minutes)
+        end_time = start_time + duration
+        return TimeRange(start_time, end_time)
+
+    def test_simple(self):
+        """Test basic event-filling functionality"""
+        hourly_index = pandas.DatetimeIndex(freq="1H", start=pandas.datetime(year=2016, month=4, day=1), periods=1000)
+
+        dummy_events = [self._make_time(pandas.datetime(year=2016, month=4, day=1, hour=5, minute=50)), self._make_time(pandas.datetime(year=2016, month=4, day=1, hour=7, minute=20))]
+
+        indicatored = get_event_series(hourly_index, dummy_events)
+        self.assertEqual(1, indicatored.sum())
+
+        minute_index = pandas.DatetimeIndex(freq="1Min", start=pandas.datetime(year=2016, month=4, day=1), periods=1000)
+        indicatored = get_event_series(minute_index, dummy_events)
+        self.assertEqual(60, indicatored.sum())

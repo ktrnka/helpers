@@ -3,6 +3,10 @@ from __future__ import unicode_literals
 import unicodedata
 import unittest
 
+"""
+Very simple assorted helpers for natural language processing that I've used a few times.
+"""
+
 _CHAR_TRANSLATIONS = {
     # chars to remove
     "\u00ae": None,
@@ -37,12 +41,12 @@ def ngramify(sequence, n=3, start="^", end="$"):
     if end:
         sequence = sequence + [end]
 
-    for i in xrange(n, len(sequence) + 1):
+    for i in range(n, len(sequence) + 1):
         yield tuple(sequence[i - n:i])
 
 
 def get_hash_indicators(items, num_features):
-    features = [0 for i in xrange(num_features)]
+    features = [0 for _ in range(num_features)]
 
     for item in items:
         features[hash(item) % num_features] += 1

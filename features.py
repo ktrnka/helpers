@@ -1,8 +1,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import sys
-
 import numpy
 import pandas
 
@@ -50,11 +48,15 @@ def add_transformation_feature(dataframe, feature, transform, drop=False):
 
 def get_event_series(datetime_index, event_ranges):
     """Create a boolean series showing when in the datetime_index we're in the time ranges in the event_ranges"""
+    assert isinstance(datetime_index, pandas.DatetimeIndex)
     series = pandas.Series(data=0, index=datetime_index, dtype=numpy.int8)
 
     for event in event_ranges:
-        closest_start = series.index.searchsorted(event["start"], side="right")
-        closest_end = series.index.searchsorted(event["end"], side="right")
+        assert isinstance(event, TimeRange)
+
+        # Note: the side only matters for exact matches which are super rare
+        closest_start = series.index.searchsorted(event.start, side="right")
+        closest_end = series.index.searchsorted(event.end, side="right")
         series.loc[closest_start:closest_end] = 1
 
     return series

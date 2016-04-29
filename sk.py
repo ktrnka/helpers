@@ -1,12 +1,11 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+
 import collections
-import logging
+import itertools
 import math
 import numbers
 from operator import itemgetter
-
-import itertools
 
 import numpy
 import pandas
@@ -19,6 +18,7 @@ import sklearn.metrics
 import sklearn.utils.random
 
 import helpers.general
+
 
 def _convert_scale(target_value, max_value):
     """If target_value is float, mult with max_value otherwise take it straight"""
@@ -496,3 +496,10 @@ def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "C
                 return format.format(name, nested_name)
             except AttributeError:
                 return name
+
+
+def with_model_name(filename, model, snake_case=False):
+    model_name = get_model_name(model, format="{}_{}")
+    if snake_case:
+        model_name = helpers.general.camel_to_snake(model_name)
+    return helpers.general._with_extra(filename, model_name)
