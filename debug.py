@@ -1,10 +1,14 @@
+from __future__ import unicode_literals
 from __future__ import print_function
 
-"""
-Data is weird? Model is doing weird shit? This module helps but only if you have beer.
-"""
+import sys
+from operator import itemgetter
 
-from __future__ import unicode_literals
+import pandas
+import sklearn
+
+import helpers.general
+
 import unittest
 import numpy
 
@@ -17,8 +21,13 @@ import sklearn.utils.validation
 import sklearn.base
 import sklearn.metrics.scorer
 
+"""
+Data is weird? Model is doing weird shit? This module helps but only if you have beer.
+"""
+
+
 def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, param_eps=None, max_eps=20.):
-    """Approximate numeric gradient on this one example with respect to the inputs (assumes the model weights are fixed)"""
+    """Numeric gradient on this one example with respect to the inputs (assumes the model weights are fixed)"""
     assert isinstance(x, numpy.ndarray)
     if param_eps is None:
         param_eps = numpy.ones_like(x) * eps
@@ -171,8 +180,8 @@ class ExplanationTests(unittest.TestCase):
 
         perturbations = stack_all_perturbations(row, .1)
 
-        for i in xrange(len(row)):
-            for j in xrange(len(row)):
+        for i in range(len(row)):
+            for j in range(len(row)):
                 if i == j:
                     self.assertAlmostEqual(1.1 * row[i], perturbations[i, j], places=5)
                 else:
@@ -190,7 +199,7 @@ class ExplanationTests(unittest.TestCase):
         self.assertLess(mean_absolute_error(Y_test, predictions), 10)
 
         # now diagnose all examples - it should be weighting the first feature the most
-        for i in xrange(Y_test.shape[0]):
+        for i in range(Y_test.shape[0]):
             input_gradient = get_input_gradient(Y_test[i], predictions[i], X_test[i], model)
             self.assertLess(abs(input_gradient[1]), abs(input_gradient[0]))
 
@@ -206,7 +215,7 @@ class ExplanationTests(unittest.TestCase):
         self.assertLess(mean_absolute_error(Y_test, predictions), 10)
 
         # now diagnose all examples - it should be weighting the first feature the most
-        for i in xrange(Y_test.shape[0]):
+        for i in range(Y_test.shape[0]):
             input_gradient = get_input_gradient(Y_test[i], predictions[i], X_test[i], model)
 
             self.assertLess(abs(input_gradient[1]), abs(input_gradient[0]))
@@ -222,6 +231,65 @@ class ExplanationTests(unittest.TestCase):
         self.assertLess(mean_absolute_error(Y_test, predictions), 10)
 
         # now diagnose all examples - it should be weighting the first feature the most
-        for i in xrange(Y_test.shape[0]):
+        for i in range(Y_test.shape[0]):
             input_gradient = get_input_gradient(Y_test[i], predictions[i], X_test[i], model)
             self.assertLess(abs(input_gradient[1]), abs(input_gradient[0]))
+
+
+def verify_splits(X, Y, splits):
+    for i, (train, test) in enumerate(splits):
+        # analyse train and test
+        print("Split {}".format(i))
+
+        print("\tX[train].mean diff: ", X[train].mean(axis=0) - X.mean(axis=0))
+        print("\tX[train].std diffs: ", X[train].std(axis=0) - X.std(axis=0))
+        print("\tY[train].mean: ", Y[train].mean(axis=0))
+        print("\tY[train].std: ", Y[train].std(axis=0).mean())
+
+
+def verify_data(X_df, Y_df, filename):
+    assert isinstance(X_df, pandas.DataFrame)
+    assert isinstance(Y_df, pandas.DataFrame)
+    logger = helpers.general.get_function_logger()
+
+    # check NaN inputs
+    data_na = X_df.isnull().sum()
+    if data_na.sum() > 0:
+        logger.error("Null values in feature matrix")
+
+        for feature, na_count in data_na.items():
+            if na_count > 0:
+                logger.error("{}: {:.1f}% null ({:,} / {:,})".format(feature, 100. * na_count / len(X_df), na_count, len(X_df)))
+
+        sys.exit(-1)
+
+    # test for zero stddev
+    train_std = X_df.std()
+    for feature, std in train_std.iteritems():
+        if std == 0:
+            logger.warning("{} has std dev zero".format(feature))
+
+    # scale both input and output
+    X = sklearn.preprocessing.RobustScaler().fit_transform(X_df)
+    Y = sklearn.preprocessing.StandardScaler().fit_transform(Y_df)
+
+    # find rows with values over 10x IQR from median
+    train_deviants = numpy.abs(X) > 10
+    train_deviant_rows = train_deviants.sum(axis=1) > 0
+    deviant_feature_counts = train_deviants.sum(axis=0)
+
+    for feature, deviant_count in sorted(zip(X_df.columns, deviant_feature_counts), key=itemgetter(1), reverse=True):
+        if deviant_count == 0:
+            break
+
+        logger.info("{}: {:,} values beyond 10x IQR".format(feature, deviant_count))
+
+    deviant_df = pandas.DataFrame(numpy.hstack([X[train_deviant_rows], Y[train_deviant_rows]]), columns=list(X_df.columns) + list(Y_df.columns))
+    if deviant_df.shape[0] > 0:
+        logger.warn("Found {:,} deviant rows".format(deviant_df.shape[0]))
+
+        if filename:
+            logger.warn("Saving deviant rows to {}".format(filename))
+            deviant_df.to_csv(filename)
+    else:
+        print("No deviant rows")
