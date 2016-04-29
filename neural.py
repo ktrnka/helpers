@@ -134,7 +134,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
 
     def _get_dense_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        dense_kwargs = {"init": self.init}
+        dense_kwargs = {"init": self.init, "trainable": True}
         if self.l2:
             dense_kwargs["W_regularizer"] = keras.regularizers.l2(self.l2)
 
@@ -256,7 +256,7 @@ class RnnRegressor(NnRegressor):
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        kwargs = {"output_dim": self.num_units}
+        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": True}
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
