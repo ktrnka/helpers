@@ -418,7 +418,7 @@ class TimeCV(object):
 
 
 def _rms_error(y_true, y_pred):
-    return numpy.square(y_true - y_pred).mean().mean() ** 0.5
+    return float(numpy.square(y_true - y_pred).mean().mean() ** 0.5)
 
 
 rms_error = sklearn.metrics.make_scorer(_rms_error, greater_is_better=False)
@@ -462,6 +462,17 @@ class QuickTransform(sklearn.base.TransformerMixin):
     @staticmethod
     def make_append_mean():
         return QuickTransform(lambda Y: numpy.hstack([Y, Y.mean(axis=1).reshape(-1, 1)]), lambda Y: Y[:, :-1])
+
+    @staticmethod
+    def make_append_rolling(window=7):
+        def transform(Y):
+            rolled = pandas.DataFrame(Y).rolling(window=window).mean().fillna(method="bfill")
+            return numpy.hstack([Y, rolled.values * 0.25])
+
+        def invert(Y):
+            return Y[:, :Y.shape[1] / 2]
+
+        return QuickTransform(transform, invert)
 
 
 def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "Classifier"}):
