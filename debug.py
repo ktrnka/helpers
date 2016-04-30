@@ -1,25 +1,23 @@
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import sys
+import unittest
 from operator import itemgetter
 
+import numpy
 import pandas
 import sklearn
-
-import helpers.general
-
-import unittest
-import numpy
-
-import sklearn.linear_model
-import sklearn.cross_validation
-from sklearn.metrics import mean_absolute_error
-import sklearn.ensemble
-import sklearn.datasets
-import sklearn.utils.validation
 import sklearn.base
+import sklearn.cross_validation
+import sklearn.datasets
+import sklearn.ensemble
+import sklearn.linear_model
 import sklearn.metrics.scorer
+import sklearn.utils.validation
+from sklearn.metrics import mean_absolute_error
+
+from . import general
 
 """
 Data is weird? Model is doing weird shit? This module helps but only if you have beer.
@@ -250,7 +248,7 @@ def verify_splits(X, Y, splits):
 def verify_data(X_df, Y_df, filename):
     assert isinstance(X_df, pandas.DataFrame)
     assert isinstance(Y_df, pandas.DataFrame)
-    logger = helpers.general.get_function_logger()
+    logger = general.get_function_logger()
 
     # check NaN inputs
     data_na = X_df.isnull().sum()

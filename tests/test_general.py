@@ -3,7 +3,7 @@ import unittest
 import numpy
 import pandas
 
-from helpers.features import TimeRange, get_event_series
+from ..features import TimeRange, get_event_series
 from .. import general
 
 

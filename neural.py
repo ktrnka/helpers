@@ -1,7 +1,9 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import time
 
+import keras.backend
 import keras.callbacks
 import keras.constraints
 import keras.layers
@@ -9,14 +11,13 @@ import keras.layers.recurrent
 import keras.models
 import keras.optimizers
 import keras.regularizers
-import keras.backend
 import numpy
 import pandas
 import sklearn
 import sklearn.utils
 import theano
 
-import helpers.general as general
+from . import general
 
 _he_activations = {"relu"}
 
@@ -256,7 +257,7 @@ class RnnRegressor(NnRegressor):
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": True}
+        kwargs = {"output_dim": self.num_units, "trainable": True}
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout

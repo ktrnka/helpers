@@ -1,18 +1,17 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import math
 import unittest
 
-import math
-
 import numpy
-import sklearn.pipeline
+import sklearn.dummy
 import sklearn.linear_model
 import sklearn.metrics
-import sklearn.dummy
+import sklearn.pipeline
 
-from .. import neural
 from .test_sk import _build_data
+from .. import neural
 
 
 def _build_periodic_data(n, period=50.):

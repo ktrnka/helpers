@@ -17,8 +17,7 @@ import sklearn.linear_model
 import sklearn.metrics
 import sklearn.utils.random
 
-import helpers.general
-
+from . import general
 
 def _convert_scale(target_value, max_value):
     """If target_value is float, mult with max_value otherwise take it straight"""
@@ -42,7 +41,7 @@ class SubspaceWrapper(sklearn.base.BaseEstimator):
         self.max_samples = max_samples
         self.max_features = max_features
 
-        self.logger_ = helpers.general.get_class_logger(self)
+        self.logger_ = general.get_class_logger(self)
         self.cols_ = None
         self.estimator_ = None
 
@@ -84,7 +83,7 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
         self.max_features = max_features
         self.feature_weight_getter = feature_weight_getter
 
-        self.logger = helpers.general.get_class_logger(self)
+        self.logger = general.get_class_logger(self)
         self.estimators_ = None
         self.num_features_ = None
 
@@ -501,5 +500,5 @@ def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "C
 def with_model_name(filename, model, snake_case=False):
     model_name = get_model_name(model, format="{}_{}")
     if snake_case:
-        model_name = helpers.general.camel_to_snake(model_name)
-    return helpers.general._with_extra(filename, model_name)
+        model_name = general.camel_to_snake(model_name)
+    return general._with_extra(filename, model_name)
