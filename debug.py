@@ -291,3 +291,18 @@ def verify_data(X_df, Y_df, filename):
             deviant_df.to_csv(filename)
     else:
         print("No deviant rows")
+
+    # check for outliers in outputs
+    Y = sklearn.preprocessing.RobustScaler().fit_transform(Y_df)
+    Y_deviants = numpy.abs(Y) > 10
+    deviant_rows = Y_deviants.sum(axis=1)
+    deviant_cols = Y_deviants.sum(axis=0)
+
+    if deviant_rows.sum() > 0:
+        logger.warn("Output has {:,} values beyond 10x IQR".format(deviant_rows.sum()))
+
+        for feature, deviant_count in sorted(zip(Y_df.columns, deviant_cols), key=itemgetter(1), reverse=True):
+            if deviant_count == 0:
+                break
+
+            logger.info("{}: {:,} values beyond 10x IQR".format(feature, deviant_count))
