@@ -8,8 +8,10 @@ Goals
 * Shared library = enough incentive to write unit tests for common functionality
 * Sharing some of my helper code back to the community
 
-Issues
+TODO
 ======
 
-* I can't seem to get relative imports to work for both the unit tests and for the project I'm using this in.
-This is a major weakness.
+* requirements.txt
+* Merge some of the ensemble work from my League project
+* Test and utilize the debug module
+* Can I merge pairwise feature generation? In the other code base it's dependent on a base model.

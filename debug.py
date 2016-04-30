@@ -24,17 +24,17 @@ Data is weird? Model is doing weird shit? This module helps but only if you have
 """
 
 
-def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, param_eps=None, max_eps=20.):
+def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, elementwise_eps=None, max_eps=20.):
     """Numeric gradient on this one example with respect to the inputs (assumes the model weights are fixed)"""
     assert isinstance(x, numpy.ndarray)
-    if param_eps is None:
-        param_eps = numpy.ones_like(x) * eps
+    if elementwise_eps is None:
+        elementwise_eps = numpy.ones_like(x) * eps
 
     # MSE, should be a single number
     base_error = ((y_true - y_pred) ** 2).mean()
 
     # build a perturbation matrix of size the number of elements
-    pos_shifted = stack_all_perturbations(x, 0, perturb_elements=param_eps)
+    pos_shifted = stack_all_perturbations(x, 0, elementwise_scale=elementwise_eps)
     assert len(pos_shifted.shape) == 2
 
     perturbed_predictions = model.predict(pos_shifted)
@@ -47,7 +47,7 @@ def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, param_eps=None, max_e
     perturbed_error = ((y_true - perturbed_predictions) ** 2).mean(axis=1)
 
     d_error = (perturbed_error - base_error).flatten()
-    d_x = x * param_eps / 2.
+    d_x = x * elementwise_eps / 2.
 
     input_gradients = d_error / d_x
 
@@ -55,10 +55,10 @@ def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, param_eps=None, max_e
     if any(grad == 0 for grad in input_gradients):
         scale = (input_gradients == 0).astype(numpy.float32) * 10 + 1
 
-        wider_eps = numpy.minimum(scale * param_eps, numpy.ones_like(scale) * max_eps)
+        wider_eps = numpy.minimum(scale * elementwise_eps, numpy.ones_like(scale) * max_eps)
 
-        if not numpy.array_equal(param_eps, wider_eps):
-            return get_input_gradient(y_true, y_pred, x, model, param_eps=wider_eps, max_eps=max_eps)
+        if not numpy.array_equal(elementwise_eps, wider_eps):
+            return get_input_gradient(y_true, y_pred, x, model, elementwise_eps=wider_eps, max_eps=max_eps)
 
     return input_gradients
 
@@ -131,17 +131,17 @@ def explain_input_gradient(input_gradient):
         print("To get desired prediction, the model wants you to adjust feature {} by {}".format(i, -derivative))
 
 
-def stack_all_perturbations(x, perturb_all, perturb_elements=None, dtype=numpy.float32):
+def stack_all_perturbations(x, global_scale, elementwise_scale=None, dtype=numpy.float32):
     """If x is a vector, this generates a square matrix and we perturb the matrix along the diagonal"""
     perturbations = numpy.tile(x.reshape(1, -1), (x.shape[0], 1)).astype(dtype)
 
     assert perturbations.shape[0] == perturbations.shape[1]
 
     perturb_matrix = numpy.ones_like(perturbations)
-    if perturb_all:
-        perturb_matrix += numpy.identity(perturb_matrix.shape[0]) * perturb_all
-    if perturb_elements is not None:
-        perturb_matrix += numpy.diag(perturb_elements)
+    if global_scale:
+        perturb_matrix += numpy.identity(perturb_matrix.shape[0]) * global_scale
+    if elementwise_scale is not None:
+        perturb_matrix += numpy.diag(elementwise_scale)
 
     return perturbations * perturb_matrix
 
