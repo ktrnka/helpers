@@ -17,7 +17,6 @@ class HelperTests(unittest.TestCase):
         X, Y = _build_data(100)
 
         # regular test
-        # TODO: This will fail if the list() is removed but it shouldn't
         splits = list(sk.TimeCV(X.shape[0], 4))
         self.assertSequenceEqual([(range(0, 50), range(50, 75)), (range(0, 75), range(75, 100))], splits)
         self.assertEqual(2, len(splits))

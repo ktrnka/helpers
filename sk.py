@@ -19,6 +19,7 @@ import sklearn.utils.random
 
 from . import general
 
+
 def _convert_scale(target_value, max_value):
     """If target_value is float, mult with max_value otherwise take it straight"""
     if target_value <= 1:
@@ -95,14 +96,14 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
         self.num_features_ = X.shape[1]
 
         if not self.feature_weight_getter:
-            self.estimators_ = [self._get_estimator().fit(X, Y) for _ in xrange(self.n_estimators)]
+            self.estimators_ = [self._get_estimator().fit(X, Y) for _ in range(self.n_estimators)]
         else:
             sample1 = self.n_estimators / 3
             sample2 = self.n_estimators - sample1
 
-            self.estimators_ = [self._get_estimator().fit(X, Y) for _ in xrange(sample1)]
+            self.estimators_ = [self._get_estimator().fit(X, Y) for _ in range(sample1)]
             feature_probs = self.get_feature_weights(self.feature_weight_getter)
-            self.estimators_.extend(self._get_estimator().fit(X, Y, feature_probs=feature_probs) for _ in xrange(sample2))
+            self.estimators_.extend(self._get_estimator().fit(X, Y, feature_probs=feature_probs) for _ in range(sample2))
 
         return self
 
@@ -118,7 +119,7 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
         return result
 
     def get_feature_weights(self, feature_weight_getter):
-        weights = [list() for _ in xrange(self.num_features_)]
+        weights = [list() for _ in range(self.num_features_)]
 
         for estimator in self.estimators_:
             for col, weight in estimator.get_feature_weights(feature_weight_getter):
@@ -190,7 +191,7 @@ class MultivariateRegressionWrapper(sklearn.base.BaseEstimator):
             Y = Y.values
 
         assert len(Y.shape) == 2
-        self.estimators_ = [sklearn.base.clone(self.estimator).fit(X, Y[:, i]) for i in xrange(Y.shape[1])]
+        self.estimators_ = [sklearn.base.clone(self.estimator).fit(X, Y[:, i]) for i in range(Y.shape[1])]
         return self
 
     def predict(self, X):
@@ -206,15 +207,15 @@ class MultivariateRegressionWrapper(sklearn.base.BaseEstimator):
 
         params = collections.defaultdict(list)
         for estimator in self.estimators_:
-            for k, v in estimator.best_params_.iteritems():
+            for k, v in estimator.best_params_.items():
                 params[k].append(v)
 
-        return {k: numpy.asarray(v) for k, v in params.iteritems()}
+        return {k: numpy.asarray(v) for k, v in params.items()}
 
     def print_best_params(self):
         print("Best hyperparameters for grid search inside of multivariate regression")
 
-        for name, dist in self.get_best_param_distributions().iteritems():
+        for name, dist in self.get_best_param_distributions().items():
             try:
                 print("\t{}: {:.2f} +/- {:.2f}".format(name, dist.mean(), dist.std()))
             except TypeError:
@@ -235,13 +236,13 @@ class MultivariateRegressionWrapper(sklearn.base.BaseEstimator):
             for feature_name, feature_score in zip(feature_names, importances):
                 feature_importances[feature_name].append(feature_score)
 
-        return {k: numpy.asarray(v) for k, v in feature_importances.iteritems()}
+        return {k: numpy.asarray(v) for k, v in feature_importances.items()}
 
     def print_feature_importances(self, feature_names):
         print("Feature importances")
 
         scores = self.get_feature_importances(feature_names)
-        for name, dist in sorted(scores.iteritems(), key=lambda pair: pair[1].mean(), reverse=True):
+        for name, dist in sorted(scores.items(), key=lambda pair: pair[1].mean(), reverse=True):
             print("\t{}: {:.3f} +/- {:.3f}".format(name, dist.mean(), dist.std()))
 
 
@@ -258,7 +259,7 @@ def print_tuning_scores(tuned_estimator, reverse=True):
 def print_feature_importances(columns, classifier):
     """Show feature importances for a classifier that supports them like random forest or gradient boosting"""
     paired_features = zip(columns, classifier.feature_importances_)
-    field_width = unicode(max(len(c) for c in columns))
+    field_width = str(max(len(c) for c in columns))
     format_string = "\t{:" + field_width + "s}: {}"
     print("Feature importances")
     for feature_name, importance in sorted(paired_features, key=itemgetter(1), reverse=True):
@@ -276,7 +277,7 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
                                                                               test.parameters))
 
         print("Hyperparameter correlations with evaluation metric")
-        for param, (stat_name, stat, pval, extras) in self.correlate_hyperparameters().iteritems():
+        for param, (stat_name, stat, pval, extras) in self.correlate_hyperparameters().items():
             print("\t{}: {} = {:.4f}, p = {:.4f}".format(param, stat_name, stat, pval))
 
             if extras:
@@ -287,7 +288,7 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
         param_scores = self._get_independent_scores()
 
         param_correlations = dict()
-        for param_name, points in param_scores.iteritems():
+        for param_name, points in param_scores.items():
             if all(isinstance(x, numbers.Number) for x, _ in points):
                 # numeric params path: use Pearson
                 points = numpy.asarray(points)
@@ -301,11 +302,11 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
                 for param_val, score in points:
                     param_vals[param_val].append(score)
 
-                anova_f, anova_p = scipy.stats.f_oneway(*[numpy.asarray(v) for v in param_vals.itervalues()])
+                anova_f, anova_p = scipy.stats.f_oneway(*[numpy.asarray(v) for v in param_vals.values()])
 
                 extra = None
                 if anova_p <= 0.05:
-                    extra = collections.Counter({p: numpy.mean(vals) for p, vals in param_vals.iteritems()})
+                    extra = collections.Counter({p: numpy.mean(vals) for p, vals in param_vals.items()})
                 param_correlations[param_name] = ("Anova f", anova_f, anova_p, extra)
 
         return param_correlations
@@ -316,12 +317,12 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
         for test in self.grid_scores_:
             scores = test.cv_validation_scores
 
-            for name, value in test.parameters.iteritems():
+            for name, value in test.parameters.items():
                 param_counts[name][value] += 1
                 param_scores[name].append((value, scores.mean()))
 
         # remove parameter values that don't vary
-        for param, value_distribution in param_counts.iteritems():
+        for param, value_distribution in param_counts.items():
             if len(value_distribution) == 1 and param in param_scores:
                 del param_scores[param]
 
@@ -371,9 +372,10 @@ class TimeCV(object):
     """
     Cross-validation wrapper for time-series prediction, i.e., test only on extrapolations into the future.
     Assumes that the data is sorted chronologically.
-    """
-    ## TODO: Figure out the correct sklearn superclass for this
 
+    There doesn't seem to be an appropriate sklearn superclass because sklearn CV iterators
+    all assume that you train on everything that isn't flagged for testing.
+    """
     def __init__(self, num_rows, num_splits, min_training=0.5, test_splits=1, mirror=False, gap=0, balanced_tests=True):
         self.num_rows = int(num_rows)
         self.num_splits = int(num_splits)
@@ -384,10 +386,12 @@ class TimeCV(object):
         self.gap = gap
         self.balanced_tests = balanced_tests
 
+        self.n = len(list(self))
+
     def __iter__(self):
         per_bin = self.num_rows / float(self.num_splits)
 
-        for s in xrange(1, self.num_splits):
+        for s in range(1, self.num_splits):
             train_end = int(per_bin * s)
 
             test_start = train_end + int(self.gap * per_bin)
@@ -414,6 +418,8 @@ class TimeCV(object):
                 if self.mirror:
                     yield list(self.num_rows - train_index - 1), list(self.num_rows - test_index - 1)
 
+    def __len__(self):
+        return self.n
 
 
 def _rms_error(y_true, y_pred):
