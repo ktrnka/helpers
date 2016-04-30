@@ -37,6 +37,15 @@ class Timed(object):
         return retval
 
 
+class DataSet(object):
+    """Thin wrapper to bundle common data vars"""
+    def __init__(self, inputs, outputs, splits, feature_names):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.splits = splits
+        self.feature_names = feature_names
+
+
 def prepare_time_matrix(X, time_steps=5, fill_value=None):
     if time_steps < 1:
         raise ValueError("time_steps must be 1 or more")
