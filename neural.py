@@ -33,7 +33,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
     def __init__(self, hidden_layer_sizes=(100,), hidden_units=None, dropout=None, batch_size=-1, loss="mse",
                  num_epochs=500, activation="relu", input_noise=0., learning_rate=0.001, verbose=0, init=None, l2=None,
                  batch_norm=False, early_stopping=False, clip_gradient_norm=None, assert_finite=True,
-                 maxnorm=False, val=0., history_file=None, optimizer="adam", input_dropout=None, schedule=None):
+                 maxnorm=False, val=0., history_file=None, optimizer="adam", input_dropout=None, lr_decay=None):
         self.clip_gradient_norm = clip_gradient_norm
         self.assert_finite = assert_finite
         if hidden_units:
@@ -57,7 +57,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
         self.val = val
         self.history_file = history_file
         self.optimizer = optimizer
-        self.schedule = schedule
+        self.lr_decay = lr_decay
         self.extra_callback = None
 
         self.logger = general.get_class_logger(self)
@@ -158,8 +158,9 @@ class NnRegressor(sklearn.base.BaseEstimator):
                                                mode="min")
             kwargs["callbacks"].append(es)
 
-        if self.schedule:
-            kwargs["callbacks"].append(keras.callbacks.LearningRateScheduler(self.schedule))
+        if self.lr_decay:
+            s = make_learning_rate_schedule(self.learning_rate, self.lr_decay)
+            kwargs["callbacks"].append(keras.callbacks.LearningRateScheduler(s))
 
         if self.extra_callback:
             kwargs["callbacks"].append(self.extra_callback)
