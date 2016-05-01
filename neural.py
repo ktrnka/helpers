@@ -159,8 +159,14 @@ class NnRegressor(sklearn.base.BaseEstimator):
             kwargs["callbacks"].append(es)
 
         if self.lr_decay:
-            s = make_learning_rate_schedule(self.learning_rate, self.lr_decay)
-            kwargs["callbacks"].append(keras.callbacks.LearningRateScheduler(s))
+            kwargs["callbacks"].append(LearningRateDecay(self.lr_decay))
+            # def schedule(epoch_num):
+            #     lr = self.learning_rate * self.lr_decay ** epoch_num
+            #     self.logger.debug("Setting learning rate at {} to {}".format(epoch_num, lr))
+            #     return lr
+
+            # s = make_learning_rate_schedule(self.learning_rate, self.lr_decay)
+            # kwargs["callbacks"].append(keras.callbacks.LearningRateScheduler(lambda e: self.learning_rate * self.lr_decay ** e))
 
         if self.extra_callback:
             kwargs["callbacks"].append(self.extra_callback)
@@ -413,3 +419,16 @@ class AdaptiveLearningRateScheduler(keras.callbacks.Callback):
 
     def _scale_learning_rate(self, scale):
         return keras.backend.get_value(self.model.optimizer.lr) * scale
+
+
+class LearningRateDecay(keras.callbacks.Callback):
+    """Trying to get mode debug info...."""
+    def __init__(self, decay):
+        super(LearningRateDecay, self).__init__()
+        self.decay = decay
+        self.logger = general.get_class_logger(self)
+
+    def on_epoch_end(self, epoch, logs={}):
+        lr = keras.backend.get_value(self.model.optimizer.lr)
+        self.logger.debug("Decay LR to {}".format(lr * self.decay))
+        keras.backend.set_value(self.model.optimizer.lr, lr * self.decay)
