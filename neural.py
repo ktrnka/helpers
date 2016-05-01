@@ -158,7 +158,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
                                                mode="min")
             kwargs["callbacks"].append(es)
 
-        if self.lr_decay:
+        if self.lr_decay and self.lr_decay != 1:
             assert 0 < self.lr_decay < 1, "Learning rate must range 0-1"
             kwargs["callbacks"].append(LearningRateDecay(self.lr_decay))
 
@@ -218,6 +218,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
         self.history_df_.index.rename("epoch", inplace=True)
         self.history_df_.to_csv(self.history_file)
 
+
 def pad_to_batch(data, batch_size):
     remainder = data.shape[0] % batch_size
     if remainder == 0:
@@ -227,17 +228,19 @@ def pad_to_batch(data, batch_size):
     paddings = [(0, p) for p in pad_after]
     return numpy.pad(data, paddings, mode="edge"), lambda Y: Y[:-pad_after[0]]
 
+
 class RnnRegressor(NnRegressor):
     def __init__(self, num_units=50, time_steps=5, batch_size=100, num_epochs=100, unit="lstm", verbose=0,
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
-                 pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False):
+                 pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False,
+                 lr_decay=None):
         super(RnnRegressor, self).__init__(batch_size=batch_size, num_epochs=num_epochs, verbose=verbose,
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
                                            clip_gradient_norm=clip_gradient_norm, val=val, assert_finite=assert_finite,
                                            history_file=history_file, optimizer=optimizer, input_dropout=input_dropout,
-                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes)
+                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes, lr_decay=lr_decay)
 
         self.posttrain = posttrain
         self.num_units = num_units
@@ -258,7 +261,7 @@ class RnnRegressor(NnRegressor):
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        kwargs = {"output_dim": self.num_units, "trainable": True}
+        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": True}
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
