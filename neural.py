@@ -159,14 +159,8 @@ class NnRegressor(sklearn.base.BaseEstimator):
             kwargs["callbacks"].append(es)
 
         if self.lr_decay:
+            assert 0 < self.lr_decay < 1, "Learning rate must range 0-1"
             kwargs["callbacks"].append(LearningRateDecay(self.lr_decay))
-            # def schedule(epoch_num):
-            #     lr = self.learning_rate * self.lr_decay ** epoch_num
-            #     self.logger.debug("Setting learning rate at {} to {}".format(epoch_num, lr))
-            #     return lr
-
-            # s = make_learning_rate_schedule(self.learning_rate, self.lr_decay)
-            # kwargs["callbacks"].append(keras.callbacks.LearningRateScheduler(lambda e: self.learning_rate * self.lr_decay ** e))
 
         if self.extra_callback:
             kwargs["callbacks"].append(self.extra_callback)
