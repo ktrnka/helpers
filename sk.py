@@ -331,16 +331,18 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
     @staticmethod
     def uniform(start, end):
         """Helper to make a continuous or discrete uniform distribution depending on the input types"""
+        if start > end:
+            start, end = end, start
         if all(isinstance(x, int) for x in [start, end]):
             return scipy.stats.randint(start, end)
         else:
-            if start > end:
-                start, end = end, start
             return scipy.stats.uniform(start, end - start)
 
     @staticmethod
     def exponential(start, end, num_samples=100):
         """Helper to make a log-linear distribution"""
+        if start > end:
+            start, end = end, start
         return numpy.exp(numpy.linspace(math.log(start), math.log(end), num=num_samples))
 
 
