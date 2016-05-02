@@ -276,11 +276,12 @@ def verify_data(X_df, Y_df, filename):
     train_deviant_rows = train_deviants.sum(axis=1) > 0
     deviant_feature_counts = train_deviants.sum(axis=0)
 
+    logger.warn("Input has {:,} values beyond 10x IQR".format(deviant_feature_counts.sum()))
     for feature, deviant_count in sorted(zip(X_df.columns, deviant_feature_counts), key=itemgetter(1), reverse=True):
         if deviant_count == 0:
             break
 
-        logger.info("{}: {:,} values beyond 10x IQR".format(feature, deviant_count))
+        logger.info("Input {}: {:,} values beyond 10x IQR".format(feature, deviant_count))
 
     deviant_df = pandas.DataFrame(numpy.hstack([X[train_deviant_rows], Y[train_deviant_rows]]), columns=list(X_df.columns) + list(Y_df.columns))
     if deviant_df.shape[0] > 0:

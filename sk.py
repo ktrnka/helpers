@@ -334,6 +334,8 @@ class RandomizedSearchCV(sklearn.grid_search.RandomizedSearchCV):
         if all(isinstance(x, int) for x in [start, end]):
             return scipy.stats.randint(start, end)
         else:
+            if start > end:
+                start, end = end, start
             return scipy.stats.uniform(start, end - start)
 
     @staticmethod

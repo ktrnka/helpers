@@ -54,7 +54,7 @@ def get_event_series(datetime_index, event_ranges):
     for event in event_ranges:
         assert isinstance(event, TimeRange)
 
-        # Note: the side only matters for exact matches which are super rare
+        # Note: the side only matters for exact matches which are super rare in a datetime index
         closest_start = series.index.searchsorted(event.start, side="right")
         closest_end = series.index.searchsorted(event.end, side="right")
         series.loc[closest_start:closest_end] = 1
@@ -63,6 +63,7 @@ def get_event_series(datetime_index, event_ranges):
 
 
 class TimeRange(object):
+    """Thin wrapper to help deal with events that span a range of time"""
     def __init__(self, start, end):
         self.start = start
         self.end = end
