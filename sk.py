@@ -512,3 +512,13 @@ def with_model_name(filename, model, snake_case=False):
     if snake_case:
         model_name = general.camel_to_snake(model_name)
     return general._with_extra(filename, model_name)
+
+
+def predictions_in_training_range(Y_train, Y_pred):
+    """Fraction of predictions in the training data range (for testing regression interpolation vs extrapolation)"""
+    Y_min = Y_train.min(axis=0)
+    Y_max = Y_train.max(axis=0)
+
+    in_range = (Y_pred <= Y_max[numpy.newaxis, :]) & (Y_pred >= Y_min[numpy.newaxis, :])
+
+    return in_range.mean()
