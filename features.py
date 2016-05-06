@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
+from operator import itemgetter
+
 import numpy
 import pandas
 
@@ -60,6 +62,35 @@ def get_event_series(datetime_index, event_ranges):
         series.loc[closest_start:closest_end] = 1
 
     return series
+
+
+def find_best_features(dataset, model, scorer, n_jobs=1):
+    import sklearn.cross_validation
+
+    baseline = sklearn.cross_validation.cross_val_score(model, dataset.inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
+
+    # try deleting each feature
+    loo_scores = [None for _ in dataset.feature_names]
+    for i, name in enumerate(dataset.feature_names):
+        included = [j for j in range(dataset.inputs.shape[1]) if j != i]
+
+        reduced_inputs = dataset.inputs[:, included]
+        loo_scores[i] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
+
+    # rank features by LOO scores
+    ranked_features = sorted(enumerate(loo_scores), key=itemgetter(1), reverse=True)
+    pruned_scores = [None for _ in ranked_features]
+    pruned_scores[0] = baseline
+
+    # assume that we dropping them in their LOO order is optimal (not generally true but it might work)
+    prune_set = set()
+    for i, _ in ranked_features[:-1]:
+        prune_set.add(i)
+        included = [j for j in range(dataset.inputs.shape[1]) if j not in prune_set]
+        reduced_inputs = dataset.inputs[:, included]
+        pruned_scores[len(prune_set)] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
+
+        print("Score with {} features: {}".format(len(included), pruned_scores[len(prune_set)]))
 
 
 class TimeRange(object):
