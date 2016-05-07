@@ -68,6 +68,7 @@ def find_best_features(dataset, model, scorer, n_jobs=1):
     import sklearn.cross_validation
 
     baseline = sklearn.cross_validation.cross_val_score(model, dataset.inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
+    print("Baseline: {}".format(baseline))
 
     # try deleting each feature
     loo_scores = [None for _ in dataset.feature_names]
@@ -76,6 +77,7 @@ def find_best_features(dataset, model, scorer, n_jobs=1):
 
         reduced_inputs = dataset.inputs[:, included]
         loo_scores[i] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
+        print("Leaving out {}: {}".format(name, loo_scores[i]))
 
     # rank features by LOO scores
     ranked_features = sorted(enumerate(loo_scores), key=itemgetter(1), reverse=True)
@@ -91,7 +93,34 @@ def find_best_features(dataset, model, scorer, n_jobs=1):
         pruned_scores[len(prune_set)] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
 
         print("Score with {} features: {}".format(len(included), pruned_scores[len(prune_set)]))
+        print("\tDropped {}".format(dataset.feature_names[i]))
 
+
+def get_loo_scores(dataset, model, scorer, exclude_set):
+    import sklearn.cross_validation
+    loo_scores = {}
+    for i, name in enumerate(dataset.feature_names):
+        if i in exclude_set:
+            continue
+
+        included = [j for j in range(dataset.inputs.shape[1]) if j != i and j not in exclude_set]
+
+        reduced_inputs = dataset.inputs[:, included]
+        loo_scores[i] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer,
+                                                                 cv=dataset.splits).mean()
+    return loo_scores
+
+
+def rfe_slow(dataset, model, scorer):
+    dropped_set = set()
+    for num_dropped in range(dataset.inputs.shape[1] - 2):
+        loo_scores = get_loo_scores(dataset, model, scorer, dropped_set)
+        ranked_features = sorted(loo_scores.items(), key=itemgetter(1), reverse=True)
+        worst_feature, left_out_score = ranked_features[0]
+
+        dropped_set.add(worst_feature)
+
+        print("Dropped {}: {}".format(dataset.feature_names[worst_feature], left_out_score))
 
 class TimeRange(object):
     """Thin wrapper to help deal with events that span a range of time"""
