@@ -522,3 +522,17 @@ def predictions_in_training_range(Y_train, Y_pred):
     in_range = (Y_pred <= Y_max[numpy.newaxis, :]) & (Y_pred >= Y_min[numpy.newaxis, :])
 
     return in_range.mean()
+
+
+class AverageClonedRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+    def __init__(self, base_estimator, num_clones=2):
+        self.base_estimator = base_estimator
+        self.num_clones = num_clones
+        self.estimators_ = None
+
+    def fit(self, X, Y):
+        self.estimators_ = [sklearn.base.clone(self.base_estimator).fit(X, Y) for _ in range(self.num_clones)]
+
+    def predict(self, X):
+        predictions = numpy.dstack([e.predict(X) for e in self.estimators_])
+        return predictions.mean(axis=2)
