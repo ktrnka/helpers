@@ -95,3 +95,28 @@ class ModelTests(unittest.TestCase):
 
         # test that it's an improvement within some epsilon
         self.assertLessEqual(model_error, baseline_error + 1e-6)
+
+    def test_delta_regressor_do_no_harm(self):
+        X, Y = _build_data(100)
+
+        baseline_model = sklearn.linear_model.LinearRegression().fit(X, Y)
+        baseline_error = sklearn.metrics.mean_squared_error(Y, baseline_model.predict(X))
+
+        model = sk.DeltaSumRegressor(baseline_model).fit(X, Y)
+        error = sklearn.metrics.mean_squared_error(Y, model.predict(X))
+
+        self.assertAlmostEqual(baseline_error, error, places=5)
+
+    def test_delta_regressor_improvement(self):
+        X, Y = _build_data(100)
+
+        # make it quadratic so that the base can't fit it as well
+        Y = Y ** 2
+
+        baseline_model = sklearn.linear_model.LinearRegression().fit(X, Y)
+        baseline_error = sklearn.metrics.mean_squared_error(Y, baseline_model.predict(X))
+
+        model = sk.DeltaSumRegressor(baseline_model).fit(X, Y)
+        error = sklearn.metrics.mean_squared_error(Y, model.predict(X))
+
+        self.assertLess(error, baseline_error)

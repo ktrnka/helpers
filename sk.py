@@ -444,24 +444,20 @@ class OutputTransformation(sklearn.base.BaseEstimator):
         self.estimator = estimator
         self.transformer = transformer
 
+        self.estimator_ = None
+        self.transformer_ = None
+
     def fit(self, X, Y):
-        # TODO: Refactor this with cloning
-        self.transformer.fit(Y)
-        self.estimator.fit(X, self.transformer.transform(Y))
+        self.transformer_ = sklearn.base.clone(self.transformer).fit(Y)
+        self.estimator_ = sklearn.base.clone(self.estimator).fit(X, self.transformer_.transform(Y))
 
         return self
 
     def predict(self, X):
-        return self.transformer.inverse_transform(self.estimator.predict(X))
-
-    # def get_params(self, deep=True):
-    #     return self.estimator.get_params(deep=deep)
-    #
-    # def set_params(self, **params):
-    #     return self.estimator.set_params(**params)
+        return self.transformer_.inverse_transform(self.estimator_.predict(X))
 
 
-class QuickTransform(sklearn.base.TransformerMixin):
+class QuickTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
     def __init__(self, transform_function, inverse_function):
         self.transform_function = transform_function
         self.inverse_function = inverse_function
@@ -495,7 +491,7 @@ class QuickTransform(sklearn.base.TransformerMixin):
         return QuickTransform(transform, invert)
 
 
-class OutputClippedTransform(sklearn.base.TransformerMixin):
+class OutputClippedTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
     def __init__(self):
         self.min_ = None
         self.max_ = None
@@ -565,3 +561,48 @@ class AverageClonedRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorM
     def predict(self, X):
         predictions = numpy.dstack([e.predict(X) for e in self.estimators_])
         return predictions.mean(axis=2)
+
+
+class DeltaSumRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+    def __init__(self, base_estimator, num_rolls=2):
+        self.base_estimator = base_estimator
+        self.num_rolls = num_rolls
+
+        self.value_estimator_ = None
+        self.delta_estimator_ = None
+
+    def fit(self, X, y):
+        self.value_estimator_ = sklearn.base.clone(self.base_estimator).fit(X, y)
+
+        # create deltas
+        delta_y = (y - numpy.roll(y, 1, axis=0))[1:, :]
+        slice_X = X[1:, :]
+        self.delta_estimator_ = sklearn.base.clone(self.base_estimator).fit(slice_X, delta_y)
+
+        return self
+
+    def predict(self, X):
+        y_pred = self.value_estimator_.predict(X)
+        dy_pred = self.delta_estimator_.predict(X)
+
+        predictions = [y_pred]
+
+        # previous value plus dy
+        for roll_window in range(1, self.num_rolls + 1):
+            y_pred_step = numpy.roll(y_pred, roll_window, axis=0)
+            for i in range(roll_window):
+                y_pred_step += numpy.roll(dy_pred, i, axis=0)
+
+                y_pred_step[:roll_window, :] = y_pred[:roll_window, :]
+
+            percent_diff = (numpy.abs(y_pred - y_pred_step) / y_pred).mean() * 100
+            print("Prediction difference from {}-step delta estimation: {:.1f}%".format(roll_window, percent_diff))
+
+            predictions.append(y_pred_step)
+
+        merged_predictions = numpy.mean(predictions, axis=0)
+
+        assert merged_predictions.shape == y_pred.shape
+
+        return merged_predictions
+
