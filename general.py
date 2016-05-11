@@ -39,11 +39,13 @@ class Timed(object):
 
 class DataSet(object):
     """Thin wrapper to bundle common data vars"""
-    def __init__(self, inputs, outputs, splits, feature_names):
+    def __init__(self, inputs, outputs, splits, feature_names, target_names, output_index):
         self.inputs = inputs
         self.outputs = outputs
         self.splits = splits
         self.feature_names = feature_names
+        self.target_names = target_names
+        self.output_index = output_index
 
 
 def prepare_time_matrix(X, time_steps=5, fill_value=None):
