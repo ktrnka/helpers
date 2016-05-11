@@ -445,6 +445,7 @@ class OutputTransformation(sklearn.base.BaseEstimator):
         self.transformer = transformer
 
     def fit(self, X, Y):
+        # TODO: Refactor this with cloning
         self.transformer.fit(Y)
         self.estimator.fit(X, self.transformer.transform(Y))
 
@@ -453,6 +454,12 @@ class OutputTransformation(sklearn.base.BaseEstimator):
     def predict(self, X):
         return self.transformer.inverse_transform(self.estimator.predict(X))
 
+    # def get_params(self, deep=True):
+    #     return self.estimator.get_params(deep=deep)
+    #
+    # def set_params(self, **params):
+    #     return self.estimator.set_params(**params)
+
 
 class QuickTransform(sklearn.base.TransformerMixin):
     def __init__(self, transform_function, inverse_function):
@@ -460,13 +467,17 @@ class QuickTransform(sklearn.base.TransformerMixin):
         self.inverse_function = inverse_function
 
     def fit(self, data):
-        pass
+        return self
 
     def transform(self, data):
         return self.transform_function(data)
 
     def inverse_transform(self, transformed_data):
         return self.inverse_function(transformed_data)
+
+    @staticmethod
+    def make_non_negative():
+        return QuickTransform(lambda Y: Y, lambda Y: numpy.maximum(Y, 0))
 
     @staticmethod
     def make_append_mean():
@@ -482,6 +493,24 @@ class QuickTransform(sklearn.base.TransformerMixin):
             return Y[:, :Y.shape[1] / 2]
 
         return QuickTransform(transform, invert)
+
+
+class OutputClippedTransform(sklearn.base.TransformerMixin):
+    def __init__(self):
+        self.min_ = None
+        self.max_ = None
+
+    def fit(self, outputs):
+        self.min_ = outputs.min(axis=0)
+        self.max_ = outputs.max(axis=0)
+
+        return self
+
+    def transform(self, outputs):
+        return outputs
+
+    def inverse_transform(self, outputs):
+        return numpy.minimum(numpy.maximum(outputs, self.min_), self.max_)
 
 
 def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "Classifier"}):
