@@ -16,6 +16,7 @@ import sklearn.base
 import sklearn.linear_model
 import sklearn.metrics
 import sklearn.utils.random
+import json
 
 from . import general
 
@@ -450,7 +451,6 @@ class OutputTransformation(sklearn.base.BaseEstimator):
     def fit(self, X, Y):
         self.transformer_ = sklearn.base.clone(self.transformer).fit(Y)
         self.estimator_ = sklearn.base.clone(self.estimator).fit(X, self.transformer_.transform(Y))
-
         return self
 
     def predict(self, X):
@@ -492,21 +492,34 @@ class QuickTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
 
 
 class OutputClippedTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
-    def __init__(self):
-        self.min_ = None
-        self.max_ = None
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
 
     def fit(self, outputs):
-        self.min_ = outputs.min(axis=0)
-        self.max_ = outputs.max(axis=0)
-
         return self
 
     def transform(self, outputs):
         return outputs
 
     def inverse_transform(self, outputs):
-        return numpy.minimum(numpy.maximum(outputs, self.min_), self.max_)
+        return numpy.minimum(numpy.maximum(outputs, self.min), self.max)
+
+    @staticmethod
+    def from_data(outputs):
+        return OutputClippedTransform(outputs.min(axis=0), outputs.max(axis=0))
+
+    @staticmethod
+    def load(json_in):
+        json_obj = json.load(json_in)
+
+        self = OutputClippedTransform(numpy.asarray(json_obj["min_"]), numpy.asarray(json_obj["max_"]))
+
+        return self
+
+    def save(self, file):
+        json_obj = {"min_": list(self.min), "max_": list(self.max)}
+        json.dump(json_obj, file, indent=3)
 
 
 def get_model_name(model, format="{}({})", remove={"Regressor", "Regression", "Classifier"}):
@@ -557,6 +570,7 @@ class AverageClonedRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorM
 
     def fit(self, X, Y):
         self.estimators_ = [sklearn.base.clone(self.base_estimator).fit(X, Y) for _ in range(self.num_clones)]
+        return self
 
     def predict(self, X):
         predictions = numpy.dstack([e.predict(X) for e in self.estimators_])
