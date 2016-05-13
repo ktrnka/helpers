@@ -11,7 +11,6 @@ Goals
 TODO
 ======
 
-* requirements.txt
 * Merge some of the ensemble work from my League project
 * Test and utilize the debug module
 * Can I merge pairwise feature generation? In the other code base it's dependent on a base model.
