@@ -36,10 +36,8 @@ class NnRegressor(sklearn.base.BaseEstimator):
                  maxnorm=False, val=0., history_file=None, optimizer="adam", input_dropout=None, lr_decay=None):
         self.clip_gradient_norm = clip_gradient_norm
         self.assert_finite = assert_finite
-        if hidden_units:
-            self.hidden_layer_sizes = (hidden_units,)
-        else:
-            self.hidden_layer_sizes = hidden_layer_sizes
+        self.hidden_units = hidden_units
+        self.hidden_layer_sizes = hidden_layer_sizes
         self.dropout = dropout
         self.batch_size = batch_size
         self.num_epochs = num_epochs
@@ -87,6 +85,9 @@ class NnRegressor(sklearn.base.BaseEstimator):
 
     def fit(self, X, y, **kwargs):
         self.set_params(**kwargs)
+
+        if self.hidden_units:
+            self.hidden_layer_sizes = (self.hidden_units,)
 
         self.logger.debug("X: {}, Y: {}".format(X.shape, y.shape))
 
