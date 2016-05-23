@@ -63,7 +63,7 @@ def get_input_gradient(y_true, y_pred, x, model, eps=1e-4, elementwise_eps=None,
     return input_gradients
 
 
-def compute_input_fairness(data_train, data_test, verbose=0):
+def compute_input_fairness(data_train, data_test, verbose=0, names=None):
     assert isinstance(data_train, numpy.ndarray)
     assert isinstance(data_test, numpy.ndarray)
 
@@ -85,25 +85,25 @@ def compute_input_fairness(data_train, data_test, verbose=0):
 
     if verbose:
         for i, (feature_percentage, z_score, abs_z) in enumerate(zip(outlier_percents, mean_z_scores, mean_abs_z_scores)):
-            print("Feature {}: {:.1f}% outliers, z: {:.3f}, abs(z): {:.3f}".format(i, 100. * feature_percentage, z_score, abs_z))
+            name = names[i] if names is not None else i
+            print("Feature {}: {:.1f}% outliers, z: {:.3f}, abs(z): {:.3f}".format(name, 100. * feature_percentage, z_score, abs_z))
 
     return mean_abs_z_scores.mean(), max(mean_abs_z_scores), max(outlier_percents)
 
 
-def compute_cross_validation_fairness(X, Y, splits):
-    ### TODO: Test this code. It's 100% untested!
+def compute_cross_validation_fairness(X, X_names, Y, Y_names, splits):
     for i, (train, test) in enumerate(splits):
         print("Checking fairness of CV split {}".format(i))
 
         mean_mean_abs_z, max_mean_abs_z, max_outliers = compute_input_fairness(X[train], X[test])
         if mean_mean_abs_z > 1. or max_mean_abs_z > 1. or max_outliers > 0.05:
-            print("X{test] doesn't match X[train] well", mean_mean_abs_z, max_mean_abs_z, max_outliers)
-            compute_input_fairness(X[train], X[test], verbose=1)
+            print("X[test] doesn't match X[train] well", mean_mean_abs_z, max_mean_abs_z, max_outliers)
+            compute_input_fairness(X[train], X[test], verbose=1, names=X_names)
 
         mean_mean_abs_z, max_mean_abs_z, max_outliers = compute_input_fairness(Y[train], Y[test])
         if mean_mean_abs_z > 1. or max_mean_abs_z > 1. or max_outliers > 0.05:
-            print("Y{test] doesn't match Y[train] well", mean_mean_abs_z, max_mean_abs_z, max_outliers)
-            compute_input_fairness(Y[train], Y[test], verbose=1)
+            print("Y[test] doesn't match Y[train] well", mean_mean_abs_z, max_mean_abs_z, max_outliers)
+            compute_input_fairness(Y[train], Y[test], verbose=1, names=Y_names)
 
 
 def cross_val_score(estimator, X, y=None, scoring=None, cv=None):
@@ -251,11 +251,11 @@ def verify_data(X_df, Y_df, filename):
     logger = general.get_function_logger()
 
     # check NaN inputs
-    data_na = X_df.isnull().sum()
+    data_na = X_df.isnull().sum(axis=1)
     if data_na.sum() > 0:
         logger.error("Null values in feature matrix")
 
-        for feature, na_count in data_na.items():
+        for feature, na_count in data_na.iteritems():
             if na_count > 0:
                 logger.error("{}: {:.1f}% null ({:,} / {:,})".format(feature, 100. * na_count / len(X_df), na_count, len(X_df)))
 
