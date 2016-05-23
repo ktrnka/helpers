@@ -33,7 +33,7 @@ class NnRegressor(sklearn.base.BaseEstimator):
     def __init__(self, hidden_layer_sizes=(100,), hidden_units=None, dropout=None, batch_size=-1, loss="mse",
                  num_epochs=500, activation="relu", input_noise=0., learning_rate=0.001, verbose=0, init=None, l2=None,
                  batch_norm=False, early_stopping=False, clip_gradient_norm=None, assert_finite=True,
-                 maxnorm=False, val=0., history_file=None, optimizer="adam", input_dropout=None, lr_decay=None):
+                 maxnorm=False, val=0., history_file=None, optimizer="adam", input_dropout=None, lr_decay=None, non_negative=False, weight_samples=False):
         self.clip_gradient_norm = clip_gradient_norm
         self.assert_finite = assert_finite
         self.hidden_units = hidden_units
@@ -57,6 +57,8 @@ class NnRegressor(sklearn.base.BaseEstimator):
         self.optimizer = optimizer
         self.lr_decay = lr_decay
         self.extra_callback = None
+        self.non_negative = non_negative
+        self.weight_samples = weight_samples
 
         self.logger = general.get_class_logger(self)
 
@@ -115,6 +117,9 @@ class NnRegressor(sklearn.base.BaseEstimator):
         # output layer
         model.add(keras.layers.core.Dense(output_dim=y.shape[1], **dense_kwargs))
 
+        if self.non_negative:
+            model.add(keras.layers.core.Activation("relu"))
+
         optimizer = self._get_optimizer()
         model.compile(loss=self.loss, optimizer=optimizer)
 
@@ -168,6 +173,9 @@ class NnRegressor(sklearn.base.BaseEstimator):
 
         if self.val > 0 and not disable_validation:
             kwargs["validation_split"] = self.val
+
+        if self.weight_samples:
+            kwargs["sample_weight"] = 0.97 ** numpy.log(X.shape[0] - numpy.asarray(range(X.shape[0])))
 
         kwargs["batch_size"] = self.batch_size
         if batch_size_override:
@@ -235,13 +243,13 @@ class RnnRegressor(NnRegressor):
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
                  pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False,
-                 lr_decay=None):
+                 lr_decay=None, non_negative=False):
         super(RnnRegressor, self).__init__(batch_size=batch_size, num_epochs=num_epochs, verbose=verbose,
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
                                            clip_gradient_norm=clip_gradient_norm, val=val, assert_finite=assert_finite,
                                            history_file=history_file, optimizer=optimizer, input_dropout=input_dropout,
-                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes, lr_decay=lr_decay)
+                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes, lr_decay=lr_decay, non_negative=non_negative)
 
         self.posttrain = posttrain
         self.num_units = num_units
@@ -316,6 +324,8 @@ class RnnRegressor(NnRegressor):
 
         # output layer
         model.add(keras.layers.core.Dense(output_dim=Y.shape[1], **self._get_dense_layer_kwargs()))
+        if self.non_negative:
+            model.add(keras.layers.core.Activation("relu"))
 
         optimizer = self._get_optimizer()
         model.compile(loss="mse", optimizer=optimizer)
