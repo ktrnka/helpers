@@ -11,13 +11,19 @@ Helpers for derived features, particularly in Pandas.
 """
 
 
-def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, data_type=None):
+def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, data_type=None, use_ewma=False):
     """Derive a rolling mean with the specified time steps"""
     assert isinstance(dataframe, pandas.DataFrame)
     assert isinstance(dataframe.index, pandas.DatetimeIndex)
 
     name = feature + "_rolling_{}".format(time_suffix)
-    dataframe[name] = dataframe[feature].rolling(window=time_steps).mean().fillna(method="backfill")
+    if use_ewma:
+        name += "_ewma"
+
+    if use_ewma:
+        dataframe[name] = dataframe[feature].ewm(span=time_steps).mean().fillna(method="backfill")
+    else:
+        dataframe[name] = dataframe[feature].rolling(window=time_steps).mean().fillna(method="backfill")
 
     if data_type:
         dataframe[name] = dataframe[name].astype(data_type)
