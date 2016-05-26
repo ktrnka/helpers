@@ -243,13 +243,13 @@ class RnnRegressor(NnRegressor):
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
                  pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False,
-                 lr_decay=None, non_negative=False):
+                 lr_decay=None, non_negative=False, l2=None):
         super(RnnRegressor, self).__init__(batch_size=batch_size, num_epochs=num_epochs, verbose=verbose,
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
                                            clip_gradient_norm=clip_gradient_norm, val=val, assert_finite=assert_finite,
                                            history_file=history_file, optimizer=optimizer, input_dropout=input_dropout,
-                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes, lr_decay=lr_decay, non_negative=non_negative)
+                                           activation=activation, hidden_layer_sizes=hidden_layer_sizes, lr_decay=lr_decay, non_negative=non_negative, l2=l2)
 
         self.posttrain = posttrain
         self.num_units = num_units
@@ -274,6 +274,11 @@ class RnnRegressor(NnRegressor):
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
+
+        if self.l2:
+            kwargs["W_regularizer"] = keras.regularizers.l2(self.l2)
+            kwargs["U_regularizer"] = keras.regularizers.l2(self.l2)
+
 
         return kwargs
 
