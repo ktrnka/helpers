@@ -119,6 +119,30 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
 
         return result
 
+    def evaluate_features(self, X, Y):
+        feature_scores = collections.defaultdict(list)
+        estimator_scores = list()
+        for estimator in self.estimators_:
+            score = _rms_error(Y, estimator.predict(X))
+            estimator_scores.append(score)
+            for feature in estimator.cols_:
+                feature_scores[feature].append(score)
+
+        overall_mean = numpy.mean(estimator_scores)
+
+        return {f: numpy.mean(scores) - overall_mean for f, scores in feature_scores.items()}
+
+    def evaluate_features_cv(self, X, Y, splits):
+        scores = collections.defaultdict(list)
+        for train, test in splits:
+            self.fit(X[train], Y[train])
+            split_scores = self.evaluate_features(X[test], Y[test])
+
+            for feature, score in split_scores.items():
+                scores[feature].append(score)
+
+        return {f: numpy.mean(scores) for f, scores in scores.items()}
+
     def get_feature_weights(self, feature_weight_getter):
         weights = [list() for _ in range(self.num_features_)]
 
