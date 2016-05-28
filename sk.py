@@ -490,6 +490,30 @@ class QuickTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
 
         return QuickTransform(transform, invert)
 
+    @staticmethod
+    def make_ewma_outputs(num_spans=3):
+        return QuickTransform(lambda Y: Y, lambda Y: ewma_all(Y, num_spans))
+
+
+def ewma_all(X, num_spans=3):
+    df = pandas.DataFrame(X)
+    forward = df.ewm(span=num_spans).mean()
+    backward = df[::-1].ewm(span=num_spans).mean()[::-1]
+
+    means = numpy.dstack([forward.values, backward.values]).mean(axis=2)
+    assert(means.shape == X.shape)
+
+    return means
+
+
+def centered_ewma(series, num_spans):
+    forward = series.ewm(span=num_spans).mean()
+    backward = series[::-1].ewm(span=num_spans).mean()[::-1]
+
+    means = numpy.vstack([forward.values, backward.values]).mean(axis=0)
+
+    return pandas.Series(index=forward.index, data=means, name=series.name)
+
 
 class OutputClippedTransform(sklearn.base.TransformerMixin, sklearn.base.BaseEstimator):
     def __init__(self, min, max):

@@ -23,7 +23,10 @@ def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, dat
     if use_ewma:
         dataframe[name] = dataframe[feature].ewm(span=time_steps).mean().fillna(method="backfill")
     else:
-        dataframe[name] = dataframe[feature].rolling(window=time_steps).mean().fillna(method="backfill")
+        if time_steps > 0:
+            dataframe[name] = dataframe[feature][::-1].rolling(window=time_steps).mean().fillna(method="backfill")[::-1]
+        else:
+            dataframe[name] = dataframe[feature].rolling(window=-time_steps).mean().fillna(method="backfill")
 
     if data_type:
         dataframe[name] = dataframe[name].astype(data_type)
