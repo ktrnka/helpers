@@ -52,6 +52,9 @@ class DataSet(object):
         pairs = enumerate(feature_scores)
         pairs = sorted(pairs, key=itemgetter(1), reverse=higher_is_better)
 
+        if num_features < 1:
+            num_features = int(num_features * self.inputs.shape[1])
+
         if verbose >= 1:
             print([(self.feature_names[p[0]], p[1]) for p in pairs])
 
