@@ -48,9 +48,12 @@ class DataSet(object):
         self.target_names = target_names
         self.output_index = output_index
 
-    def select_features(self, num_features, feature_scores, higher_is_better=True):
+    def select_features(self, num_features, feature_scores, higher_is_better=True, verbose=0):
         pairs = enumerate(feature_scores)
         pairs = sorted(pairs, key=itemgetter(1), reverse=higher_is_better)
+
+        if verbose >= 1:
+            print([(self.feature_names[p[0]], p[1]) for p in pairs])
 
         indexes = [p[0] for p in pairs]
         indexes = indexes[:num_features]
