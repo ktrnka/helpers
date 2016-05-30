@@ -7,6 +7,7 @@ import logging
 import os.path
 import re
 import time
+from operator import itemgetter
 
 import numpy
 
@@ -46,6 +47,15 @@ class DataSet(object):
         self.feature_names = feature_names
         self.target_names = target_names
         self.output_index = output_index
+
+    def select_features(self, num_features, feature_scores, higher_is_better=True):
+        pairs = enumerate(feature_scores)
+        pairs = sorted(pairs, key=itemgetter(1), reverse=higher_is_better)
+
+        indexes = [p[0] for p in pairs]
+        indexes = indexes[:num_features]
+
+        return DataSet(self.inputs[:, indexes], self.outputs, self.splits, self.feature_names[indexes], self.target_names, self.output_index)
 
 
 def prepare_time_matrix(X, time_steps=5, fill_value=None):
