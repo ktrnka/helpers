@@ -130,6 +130,7 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
 
         overall_mean = numpy.mean(estimator_scores)
 
+        # max across estimators
         return {f: numpy.mean(scores) - overall_mean for f, scores in feature_scores.items()}
 
     def evaluate_features_cv(self, X, Y, splits):
@@ -141,6 +142,7 @@ class MultivariateBaggingRegressor(sklearn.base.BaseEstimator, sklearn.base.Regr
             for feature, score in split_scores.items():
                 scores[feature].append(score)
 
+        # mean across splits
         return {f: numpy.mean(scores) for f, scores in scores.items()}
 
     def get_feature_weights(self, feature_weight_getter):
@@ -383,8 +385,8 @@ class LinearRegressionWrapper(sklearn.linear_model.LinearRegression):
 
 class ClippedRobustScaler(sklearn.preprocessing.RobustScaler):
     """Tweak on RobustScaler to clip values to -2 to 2 after reducing to IQR"""
-    def __init__(self, clip_value=2, *args, **kwargs):
-        super(ClippedRobustScaler, self).__init__(*args, **kwargs)
+    def __init__(self, clip_value=2, with_centering=True, with_scaling=True, copy=True):
+        super(ClippedRobustScaler, self).__init__(with_centering=with_centering, with_scaling=with_scaling, copy=copy)
         self.clip_value = clip_value
 
     def transform(self, X, y=None):
