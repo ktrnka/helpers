@@ -63,6 +63,13 @@ class DataSet(object):
 
         return DataSet(self.inputs[:, indexes], self.outputs, self.splits, self.feature_names[indexes], self.target_names, self.output_index)
 
+    def select_nonzero_features(self, feature_scores, verbose=0):
+        selector = feature_scores != 0
+
+        if verbose:
+            print("Pruning {} zero-weight features from {}".format(len(feature_scores) - selector.sum(), len(feature_scores)))
+        return DataSet(self.inputs[:, selector], self.outputs, self.splits, self.feature_names[selector], self.target_names, self.output_index)
+
 
 def prepare_time_matrix(X, time_steps=5, fill_value=None):
     if time_steps < 1:
