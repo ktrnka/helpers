@@ -458,6 +458,8 @@ class WraparoundTimeCV(object):
         self.num_splits = int(num_splits)
         self.training_num_splits = training_num_splits
 
+        assert training_num_splits < num_splits
+
         self.n = len(list(self))
 
     def __iter__(self):
