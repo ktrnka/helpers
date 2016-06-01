@@ -37,6 +37,13 @@ class HelperTests(unittest.TestCase):
         for train, test in splits:
             self.assertEqual(4912, len(test))
 
+    def test_wraparound_timecv(self):
+        X, Y = _build_data(100)
+
+        splits = list(sk.WraparoundTimeCV(X.shape[0], 5, 2))
+        self.assertSequenceEqual([(range(60, 100), range(0, 20)), (range(80, 100) + range(0, 20), range(20, 40)), (range(0, 40), range(40, 60)), (range(20, 60), range(60, 80)), (range(40, 80), range(80, 100))], splits)
+        self.assertEqual(5, len(splits))
+
     def test_get_name(self):
         model = sklearn.linear_model.LinearRegression()
         self.assertEqual("Linear", sk.get_model_name(model))

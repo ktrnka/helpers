@@ -452,6 +452,39 @@ class TimeCV(object):
     def __len__(self):
         return self.n
 
+class WraparoundTimeCV(object):
+    def __init__(self, num_rows, num_splits, training_num_splits):
+        self.num_rows = int(num_rows)
+        self.num_splits = int(num_splits)
+        self.training_num_splits = training_num_splits
+
+        self.n = len(list(self))
+
+    def __iter__(self):
+        per_bin = self.num_rows / float(self.num_splits)
+
+        for test_bin in range(self.num_splits):
+            test_start = int(per_bin * test_bin)
+            test_end = int(per_bin * (test_bin + 1))
+
+            training_first_bin = test_bin - self.training_num_splits
+
+            train_index = []
+
+            # tail of the training data
+            if training_first_bin < 0:
+                train_index.extend(range(int((training_first_bin % self.num_splits) * per_bin), self.num_rows))
+                training_first_bin = 0
+            # head of the training data
+            train_index.extend(range(int(training_first_bin * per_bin), test_start))
+
+            test_index = range(test_start, test_end)
+
+            yield list(train_index), list(test_index)
+
+
+    def __len__(self):
+        return self.n
 
 def _rms_error(y_true, y_pred):
     return float(numpy.square(y_true - y_pred).mean().mean() ** 0.5)
