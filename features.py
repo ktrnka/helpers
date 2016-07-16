@@ -35,6 +35,34 @@ def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, dat
         dataframe.drop([feature], axis=1, inplace=True)
 
 
+def roll(series, num_steps, function="mean"):
+    """Helper to roll a series forwards or backwards without inplace modification"""
+    run_backwards = num_steps < 0
+
+    # if num steps is negative we want the rolling to happen into the future so we reverse the data, roll, then reverse again
+    if run_backwards:
+        num_steps = -num_steps
+        series = series[::-1]
+
+    # rolling into the past
+    rolled = series.rolling(num_steps)
+
+    # apply the function
+    if function == "mean":
+        rolled = rolled.mean()
+    elif function == "sum":
+        rolled = rolled.sum()
+    else:
+        raise ValueError("Unknown function {}".format(function))
+
+    # cleanup
+    rolled = rolled.bfill()
+
+    if run_backwards:
+        rolled = rolled[::-1]
+
+    return rolled
+
 def add_transformation_feature(dataframe, feature, transform, drop=False):
     """Derive a feature with a simple function like log, sqrt, etc"""
     assert isinstance(dataframe, pandas.DataFrame)

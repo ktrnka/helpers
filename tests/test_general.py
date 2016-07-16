@@ -3,7 +3,7 @@ import unittest
 import numpy
 import pandas
 
-from ..features import TimeRange, get_event_series, add_lag_feature
+from ..features import TimeRange, get_event_series, add_lag_feature, roll
 from .. import general
 
 
@@ -125,3 +125,19 @@ class FeatureTransformTests(unittest.TestCase):
 
         # test that they're just shifted versions of each other after the backfill spans
         self.assertEqual(data["my_feature_rolling_1h"][149], data["my_feature_rolling_next1h"][90])
+
+    def test_functional_rolling(self):
+        """Test the version of rolling helpers that doesn't have side effects"""
+        datetime_index = pandas.date_range("1/1/2011", periods=1000, freq="M")
+        data_series = pandas.Series(range(1000), index=datetime_index)
+
+        data = pandas.DataFrame(index=datetime_index)
+        data["my_feature"] = data_series
+
+        # compute it just slightly differently
+        data["my_feature_rolling_1h"] = roll(data["my_feature"], 60)
+        data["my_feature_rolling_next1h"] = roll(data["my_feature"], -60)
+
+        # try the first few tests
+        self.assertLess(data["my_feature"][60], data["my_feature_rolling_next1h"][60])
+        self.assertGreater(data["my_feature"][60], data["my_feature_rolling_1h"][60])
