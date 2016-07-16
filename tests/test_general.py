@@ -3,7 +3,7 @@ import unittest
 import numpy
 import pandas
 
-from ..features import TimeRange, get_event_series
+from ..features import TimeRange, get_event_series, add_lag_feature
 from .. import general
 
 
@@ -101,3 +101,27 @@ class TimeRangeTests(unittest.TestCase):
         minute_index = pandas.DatetimeIndex(freq="1Min", start=pandas.datetime(year=2016, month=4, day=1), periods=1000)
         indicatored = get_event_series(minute_index, dummy_events)
         self.assertEqual(60, indicatored.sum())
+
+
+class FeatureTransformTests(unittest.TestCase):
+    def test_lag_features(self):
+        # make some monotonically increasing data
+        datetime_index = pandas.date_range("1/1/2011", periods=1000, freq="M")
+        data_series = pandas.Series(range(1000), index=datetime_index)
+
+        data = pandas.DataFrame(index=datetime_index)
+        data["my_feature"] = data_series
+
+        add_lag_feature(data, "my_feature", 60, "1h")
+        add_lag_feature(data, "my_feature", -60, "next1h")
+
+        # make sure it's computing on the correct side of the index
+        self.assertLess(data["my_feature"][60], data["my_feature_rolling_next1h"][60])
+        self.assertGreater(data["my_feature"][60], data["my_feature_rolling_1h"][60])
+
+        # test backfilling
+        self.assertEqual(data["my_feature_rolling_1h"][50], data["my_feature_rolling_1h"][40])
+        self.assertEqual(data["my_feature_rolling_next1h"][-50], data["my_feature_rolling_next1h"][-40])
+
+        # test that they're just shifted versions of each other after the backfill spans
+        self.assertEqual(data["my_feature_rolling_1h"][149], data["my_feature_rolling_next1h"][90])
