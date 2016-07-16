@@ -141,3 +141,11 @@ class FeatureTransformTests(unittest.TestCase):
         # try the first few tests
         self.assertLess(data["my_feature"][60], data["my_feature_rolling_next1h"][60])
         self.assertGreater(data["my_feature"][60], data["my_feature_rolling_1h"][60])
+
+        # test that it'll work on whole dataframes not just series (cause the pandas interface for rolling is the same for both)
+        df_rolled_60 = roll(data[["my_feature"]], 60)
+        df_rolled_next60 = roll(data[["my_feature"]], -60)
+
+        self.assertTrue(isinstance(df_rolled_60, pandas.DataFrame))
+        self.assertLess(data["my_feature"][60], df_rolled_next60["my_feature"][60])
+        self.assertGreater(data["my_feature"][60], df_rolled_60["my_feature"][60])
