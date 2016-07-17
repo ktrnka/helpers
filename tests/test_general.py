@@ -149,3 +149,24 @@ class FeatureTransformTests(unittest.TestCase):
         self.assertTrue(isinstance(df_rolled_60, pandas.DataFrame))
         self.assertLess(data["my_feature"][60], df_rolled_next60["my_feature"][60])
         self.assertGreater(data["my_feature"][60], df_rolled_60["my_feature"][60])
+
+
+class DataSetTests(unittest.TestCase):
+    def test_feature_selection(self):
+        num_features = 10
+        feature_names = pandas.Series(["feature_{}".format(i) for i in range(10)])
+
+        dataset = general.DataSet(numpy.random.rand(100, num_features), numpy.random.rand(100, 2), None, feature_names, None, None)
+
+        weights = numpy.random.rand(dataset.inputs.shape[1], 1).flatten()
+        reduced = dataset.select_features(5, weights)
+
+        self.assertEqual(5, reduced.inputs.shape[1])
+
+        weights = numpy.random.rand(5, 1).flatten()
+        self.assertRaises(ValueError, dataset.select_features, 5, weights)
+
+    def test_argchecks(self):
+        """Make sure that the DataSet is reasonably well formed on building it"""
+        self.assertRaises(ValueError, general.DataSet, numpy.random.rand(100, 2), numpy.random.rand(50, 1), None, None, None, None)
+

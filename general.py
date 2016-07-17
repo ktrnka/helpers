@@ -41,6 +41,20 @@ class Timed(object):
 class DataSet(object):
     """Thin wrapper to bundle common data vars"""
     def __init__(self, inputs, outputs, splits, feature_names, target_names, output_index, split_map=None):
+        """
+        Group related vars into a single data set object that encapsulates the inputs, outputs, feature names, cross-validation
+        splitting, and so on.
+        :param inputs: Feature matrix, typically called X
+        :param outputs: Output matrix, typically called y or Y
+        :param splits: sklearn cross-validation iterator
+        :param feature_names: For select_features to work this must be a pandas Series or numpy ndarray (something that supports using a list as index)
+        :param target_names: Names for the output columns
+        :param output_index: The index for the outputs. This can be important if you need to retain say time-series labels but the models only support input as ndarray
+        :param split_map: Mapping of cross-validation names to cross-validation iterators. For supporting multiple CVs.
+        :return:
+        """
+        if inputs.shape[0] != outputs.shape[0]:
+            raise ValueError("input has {} rows, output has {} rows".format(inputs.shape[0], outputs.shape[0]))
         self.inputs = inputs
         self.outputs = outputs
         self.splits = splits
@@ -52,7 +66,8 @@ class DataSet(object):
         self.split_map = split_map
 
     def select_features(self, num_features, feature_scores, higher_is_better=True, verbose=0):
-        assert len(feature_scores) == len(self.feature_names)
+        if len(feature_scores) != len(self.feature_names):
+            raise ValueError("feature_scores is size {} but there are {} features".format(len(feature_scores), self.inputs.shape[1]))
 
         pairs = enumerate(feature_scores)
         pairs = sorted(pairs, key=itemgetter(1), reverse=higher_is_better)
