@@ -52,6 +52,8 @@ class DataSet(object):
         self.split_map = split_map
 
     def select_features(self, num_features, feature_scores, higher_is_better=True, verbose=0):
+        assert len(feature_scores) == len(self.feature_names)
+
         pairs = enumerate(feature_scores)
         pairs = sorted(pairs, key=itemgetter(1), reverse=higher_is_better)
 
