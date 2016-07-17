@@ -40,13 +40,16 @@ class Timed(object):
 
 class DataSet(object):
     """Thin wrapper to bundle common data vars"""
-    def __init__(self, inputs, outputs, splits, feature_names, target_names, output_index):
+    def __init__(self, inputs, outputs, splits, feature_names, target_names, output_index, split_map=None):
         self.inputs = inputs
         self.outputs = outputs
         self.splits = splits
         self.feature_names = feature_names
         self.target_names = target_names
         self.output_index = output_index
+
+        # mapping of labels to cross validation splits to support multi CV
+        self.split_map = split_map
 
     def select_features(self, num_features, feature_scores, higher_is_better=True, verbose=0):
         pairs = enumerate(feature_scores)
