@@ -705,3 +705,25 @@ class DeltaSumRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin)
 
         return merged_predictions
 
+
+class WeightedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+    def __init__(self, estimators, weights=None):
+        self.estimators = estimators
+        self.weights = weights
+
+        # check that the weights are reasonable
+        if weights:
+            if len(weights) != len(estimators):
+                raise ValueError("{} estimators but {} weights".format(len(estimators), len(weights)))
+
+            if abs(sum(weights) - 1) > 0.1:
+                raise ValueError("Weights should sum to 1, weights={}, sum={}".format(weights, sum(weights)))
+
+        self.estimators_ = None
+
+    def fit(self, X, Y):
+        self.estimators_ = [sklearn.base.clone(estimator_template).fit(X, Y) for estimator_template in self.estimators]
+
+    def predict(self, X):
+        predictions = numpy.dstack([estimator.predict(X) for estimator in self.estimators_])
+        return numpy.average(predictions, axis=2, weights=self.weights)
