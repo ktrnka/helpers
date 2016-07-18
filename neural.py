@@ -21,6 +21,8 @@ from . import general
 
 _he_activations = {"relu"}
 
+# Normally it's always better to set this true but it only works if you edit Theano I think
+RNN_UNROLL = False
 
 def set_theano_float_precision(precision):
     assert precision in {"float32", "float64"}
@@ -271,7 +273,7 @@ class RnnRegressor(NnRegressor):
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": False}
+        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": RNN_UNROLL}
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
