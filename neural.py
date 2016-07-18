@@ -243,7 +243,7 @@ class RnnRegressor(NnRegressor):
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
                  pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False,
-                 lr_decay=None, non_negative=False, l2=None):
+                 lr_decay=None, non_negative=False, l2=None, reverse=False):
         super(RnnRegressor, self).__init__(batch_size=batch_size, num_epochs=num_epochs, verbose=verbose,
                                            early_stopping=early_stopping, dropout=dropout, loss=loss,
                                            input_noise=input_noise, learning_rate=learning_rate,
@@ -259,6 +259,7 @@ class RnnRegressor(NnRegressor):
         self.use_maxnorm = True
         self.pretrain = pretrain
         self.stateful = stateful
+        self.reverse = reverse
 
         if stateful:
             assert self.time_steps == self.batch_size
@@ -270,7 +271,7 @@ class RnnRegressor(NnRegressor):
 
     def _get_recurrent_layer_kwargs(self):
         """Apply settings to dense layer keyword args"""
-        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": True}
+        kwargs = {"output_dim": self.num_units, "trainable": True, "unroll": False}
 
         if self.recurrent_dropout:
             kwargs["dropout_U"] = self.recurrent_dropout
@@ -282,8 +283,23 @@ class RnnRegressor(NnRegressor):
 
         return kwargs
 
+    def _check_reverse(self, *args):
+        """Return the args unless the reverse flag is set, then reverse all the matrices"""
+        if len(args) == 1:
+            if self.reverse:
+                return args[0][::-1]
+            else:
+                return args[0]
+        else:
+            if self.reverse:
+                return [arg[::-1] for arg in args]
+            else:
+                return args
+
     def fit(self, X, Y, **kwargs):
         self.set_params(**kwargs)
+
+        X, Y = self._check_reverse(X, Y)
 
         model = keras.models.Sequential()
 
@@ -358,6 +374,7 @@ class RnnRegressor(NnRegressor):
         return kwargs
 
     def predict(self, X):
+        X = self._check_reverse(X)
         inverse_trans = None
         if self.stateful:
             self.model_.reset_states()
@@ -366,6 +383,8 @@ class RnnRegressor(NnRegressor):
 
         if inverse_trans:
             Y = inverse_trans(Y)
+
+        Y = self._check_reverse(Y)
         return Y
 
 
