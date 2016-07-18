@@ -417,7 +417,7 @@ class TimeCV(object):
         self.gap = gap
         self.balanced_tests = balanced_tests
 
-        self.n = len(list(self))
+        self.n = len(list(self.__iter__()))
 
     def __iter__(self):
         per_bin = self.num_rows / float(self.num_splits)
@@ -460,7 +460,7 @@ class WraparoundTimeCV(object):
 
         assert training_num_splits < num_splits
 
-        self.n = len(list(self))
+        self.n = len(list(self.__iter__()))
 
     def __iter__(self):
         per_bin = self.num_rows / float(self.num_splits)
