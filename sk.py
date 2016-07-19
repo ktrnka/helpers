@@ -727,3 +727,29 @@ class WeightedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.Regress
     def predict(self, X):
         predictions = numpy.dstack([estimator.predict(X) for estimator in self.estimators_])
         return numpy.average(predictions, axis=2, weights=self.weights)
+
+
+class StackedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+    def __init__(self, estimators, arbiter, val=0.1):
+        self.estimators = estimators
+        self.arbiter = arbiter
+        self.val = val
+
+        self.estimators_ = None
+        self.arbiter_ = None
+
+    def fit(self, X, Y):
+        # fit estimators, assuming that the last val amount of data is held out for early stopping and the like
+        self.estimators_ = [sklearn.base.clone(estimator_template).fit(X, Y) for estimator_template in self.estimators]
+
+        val_start = int(X.shape[0] * (1 - self.val))
+        val_X = X[val_start:]
+        val_Y = Y[val_start:]
+        val_predictions = numpy.hstack([estimator.predict(val_X) for estimator in self.estimators_])
+
+        self.arbiter_ = sklearn.base.clone(self.arbiter).fit(val_predictions, val_Y)
+
+    def predict(self, X):
+        predictions = numpy.hstack([estimator.predict(X) for estimator in self.estimators_])
+        arbiter_predictions = self.arbiter_.predict(predictions)
+        return arbiter_predictions
