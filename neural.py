@@ -354,9 +354,6 @@ class RnnRegressor(NnRegressor):
         model.compile(loss="mse", optimizer=optimizer)
         self.model_ = model
 
-        # unreverse (the goal is to get validation to align with the forwards version)
-        X, Y = self._check_reverse(X, Y)
-
         if self.pretrain and not self.stateful:
             self.model_.fit(X_time, Y, **self._get_fit_kwargs(X, batch_size_override=1, num_epochs_override=1))
 
