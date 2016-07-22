@@ -11,7 +11,7 @@ Helpers for derived features, particularly in Pandas.
 """
 
 
-def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, data_type=None, use_ewma=False):
+def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, data_type=None, use_ewma=False, min_periods=None):
     """Derive a rolling mean with the specified time steps"""
     assert isinstance(dataframe, pandas.DataFrame)
     assert isinstance(dataframe.index, pandas.DatetimeIndex)
@@ -21,12 +21,12 @@ def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, dat
         name += "_ewma"
 
     if use_ewma:
-        dataframe[name] = dataframe[feature].ewm(span=time_steps).mean().bfill()
+        dataframe[name] = dataframe[feature].ewm(span=time_steps, min_periods=min_periods).mean().bfill()
     else:
         if time_steps < 0:
-            dataframe[name] = dataframe[feature][::-1].rolling(window=-time_steps).mean().bfill()[::-1]
+            dataframe[name] = dataframe[feature][::-1].rolling(window=-time_steps, min_periods=min_periods).mean().bfill()[::-1]
         else:
-            dataframe[name] = dataframe[feature].rolling(window=time_steps).mean().bfill()
+            dataframe[name] = dataframe[feature].rolling(window=time_steps, min_periods=min_periods).mean().bfill()
 
     if data_type:
         dataframe[name] = dataframe[name].astype(data_type)
@@ -35,7 +35,7 @@ def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, dat
         dataframe.drop([feature], axis=1, inplace=True)
 
 
-def roll(series, num_steps, function="mean"):
+def roll(series, num_steps, function="mean", min_periods=None):
     """Helper to roll a series forwards or backwards without inplace modification"""
     run_backwards = num_steps < 0
 
@@ -45,7 +45,7 @@ def roll(series, num_steps, function="mean"):
         series = series[::-1]
 
     # rolling into the past
-    rolled = series.rolling(num_steps)
+    rolled = series.rolling(num_steps, min_periods=min_periods)
 
     # apply the function
     if function == "mean":
