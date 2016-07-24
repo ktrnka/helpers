@@ -82,7 +82,7 @@ class DataSet(object):
         indexes = [p[0] for p in pairs]
         indexes = indexes[:num_features]
 
-        return DataSet(self.inputs[:, indexes], self.outputs, self.splits, self.feature_names[indexes], self.target_names, self.output_index)
+        return DataSet(self.inputs[:, indexes], self.outputs, self.splits, self.feature_names[indexes], self.target_names, self.output_index, split_map=self.split_map)
 
     def select_nonzero_features(self, feature_scores, verbose=0):
         selector = feature_scores != 0
