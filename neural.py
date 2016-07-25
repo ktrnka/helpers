@@ -22,7 +22,7 @@ from . import general
 _he_activations = {"relu"}
 
 # Normally it's always better to set this true but it only works if you edit Theano I think
-RNN_UNROLL = False
+RNN_UNROLL = True
 
 def set_theano_float_precision(precision):
     assert precision in {"float32", "float64"}
