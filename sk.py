@@ -292,7 +292,7 @@ class JoinedMultivariateRegressionWrapper(sklearn.base.BaseEstimator):
             outputs = Y[:, output_col].reshape((Y.shape[0], 1))
             augmented_outputs.append(outputs)
 
-        Y_stacked = numpy.vstack(augmented_outputs)
+        Y_stacked = numpy.vstack(augmented_outputs).ravel()
 
         assert(Y_stacked.shape[0] == Y.shape[0] * Y.shape[1])
 
@@ -301,8 +301,6 @@ class JoinedMultivariateRegressionWrapper(sklearn.base.BaseEstimator):
     def _untransform_outputs(self, X_transformed, Y_transformed):
         # start empty
         Y = numpy.zeros((X_transformed.shape[0] / self.num_outputs_, self.num_outputs_))
-
-        print("X_transformed={}, Y_transformed={}, Y={}".format(X_transformed.shape, Y_transformed.shape, Y.shape))
 
         # fill in each output; this code doesn't make assumptions about how the stacking worked
         # just that the last col is the target output index
