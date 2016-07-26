@@ -272,6 +272,80 @@ class MultivariateRegressionWrapper(sklearn.base.BaseEstimator):
         for name, dist in sorted(scores.items(), key=lambda pair: pair[1].mean(), reverse=True):
             print("\t{}: {:.3f} +/- {:.3f}".format(name, dist.mean(), dist.std()))
 
+class JoinedMultivariateRegressionWrapper(sklearn.base.BaseEstimator):
+    """
+    Wrap a univariate regression model to support multivariate regression.
+    This uses the method that Alex mentioned on the forums - replicate the
+    input once for each output with an indicator for the output
+    """
+
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+        self.estimator_ = None
+        self.num_outputs_ = None
+
+    @staticmethod
+    def _transform_outputs(Y):
+        augmented_outputs = []
+        for output_col in range(Y.shape[1]):
+            outputs = Y[:, output_col].reshape((Y.shape[0], 1))
+            augmented_outputs.append(outputs)
+
+        Y_stacked = numpy.vstack(augmented_outputs)
+
+        assert(Y_stacked.shape[0] == Y.shape[0] * Y.shape[1])
+
+        return Y_stacked
+
+    def _untransform_outputs(self, X_transformed, Y_transformed):
+        # start empty
+        Y = numpy.zeros((X_transformed.shape[0] / self.num_outputs_, self.num_outputs_))
+
+        print("X_transformed={}, Y_transformed={}, Y={}".format(X_transformed.shape, Y_transformed.shape, Y.shape))
+
+        # fill in each output; this code doesn't make assumptions about how the stacking worked
+        # just that the last col is the target output index
+        for output_col in range(self.num_outputs_):
+            selector = X_transformed[:, -1].astype(int) == output_col
+            Y[:, output_col] = Y_transformed[selector]
+
+        return Y
+
+    def _transform_inputs(self, X):
+        augmented_inputs = []
+        for output_col in range(self.num_outputs_):
+            inputs = numpy.hstack([X, numpy.asarray([output_col for _ in range(X.shape[0])]).reshape((X.shape[0], 1))])
+            augmented_inputs.append(inputs)
+
+        X_stacked = numpy.vstack(augmented_inputs)
+        assert(X_stacked.shape[0] == X.shape[0] * self.num_outputs_)
+        assert(X_stacked.shape[1] == X.shape[1] + 1)
+
+        return X_stacked
+
+    def fit(self, X, Y):
+        assert(len(Y.shape) == 2 and Y.shape[1] > 1)
+
+        self.num_outputs_ = Y.shape[1]
+
+        X = self._transform_inputs(X)
+        Y = self._transform_outputs(Y)
+
+        self.estimator_ = sklearn.base.clone(self.estimator).fit(X, Y)
+
+        return self
+
+    def predict(self, X):
+        X_transformed = self._transform_inputs(X)
+        Y_transformed = self.estimator_.predict(X_transformed)
+        result = self._untransform_outputs(X_transformed, Y_transformed)
+
+        assert result.shape[0] == X.shape[0]
+        assert result.shape[1] == self.num_outputs_
+
+        return result
+
 
 def print_tuning_scores(tuned_estimator, reverse=True):
     """Show the cross-validation scores and hyperparamters from a grid or random search"""

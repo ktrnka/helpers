@@ -8,6 +8,7 @@ import sklearn.dummy
 import sklearn.linear_model
 import sklearn.metrics
 import sklearn.pipeline
+import sklearn.ensemble
 
 from .. import sk
 
@@ -79,6 +80,24 @@ class ModelTests(unittest.TestCase):
         X, Y = _build_data(100)
         self.assertListEqual([100, 2], list(X.shape))
         self.assertListEqual([100, 2], list(Y.shape))
+
+    def test_joined_multi(self):
+        """This test isn't good cause GradientBoosting really sucks at this kind of numerical prediction"""
+        X, Y = _build_data(100)
+        baseline_model = sklearn.linear_model.LinearRegression().fit(X, Y)
+
+        Y_pred = baseline_model.predict(X)
+        self.assertEqual(Y.shape, Y_pred.shape)
+        baseline_error = sklearn.metrics.mean_squared_error(Y, Y_pred)
+        self.assertLess(baseline_error, 1.)
+
+        model = sk.JoinedMultivariateRegressionWrapper(sklearn.ensemble.GradientBoostingRegressor())
+        model.fit(X, Y)
+        Y_pred = model.predict(X)
+        print(Y_pred)
+        self.assertEqual(Y.shape, Y_pred.shape)
+        model_error = sklearn.metrics.mean_squared_error(Y, Y_pred)
+        self.assertLess(model_error, 1.)
 
     def test_bagging(self):
         X, Y = _build_data(100)
