@@ -329,6 +329,8 @@ class JoinedMultivariateRegressionWrapper(sklearn.base.BaseEstimator):
 
         X = self._transform_inputs(X)
         Y = self._transform_outputs(Y)
+        
+        X, Y = self._rearrange(X, Y, self.num_outputs_)
 
         self.estimator_ = sklearn.base.clone(self.estimator).fit(X, Y)
 
@@ -343,6 +345,15 @@ class JoinedMultivariateRegressionWrapper(sklearn.base.BaseEstimator):
         assert result.shape[1] == self.num_outputs_
 
         return result
+
+    @staticmethod
+    def _rearrange(X, Y, num_outputs):
+        """Rearrange the data so that it's all interleaved for any nested cross-validation"""
+        base_rows = X.shape[0] / num_outputs
+        row_order = []
+        for base_index in range(base_rows):
+            row_order.extend([j * base_rows + base_index for j in range(num_outputs)])
+        return X[row_order], Y[row_order]
 
 
 def print_tuning_scores(tuned_estimator, reverse=True):

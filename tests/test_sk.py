@@ -99,6 +99,16 @@ class ModelTests(unittest.TestCase):
         model_error = sklearn.metrics.mean_squared_error(Y, Y_pred)
         self.assertLess(model_error, 1.)
 
+    def test_joined_multi_order(self):
+        X, Y = _build_data(100)
+        Y = Y[:, 0]
+
+        X2, Y2 = sk.JoinedMultivariateRegressionWrapper._rearrange(X, Y, 2)
+        self.assertEqual(X[0, 0], X2[0, 0])
+        self.assertEqual(X[50, 0], X2[1, 0])
+        self.assertEqual(X[1, 0], X2[2, 0])
+        self.assertEqual(X[51, 0], X2[3, 0])
+
     def test_bagging(self):
         X, Y = _build_data(100)
 
