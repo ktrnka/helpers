@@ -166,9 +166,12 @@ class NnRegressor(sklearn.base.BaseEstimator):
                                                mode="min")
             kwargs["callbacks"].append(es)
 
-        if self.lr_decay and self.lr_decay != 1:
-            assert 0 < self.lr_decay < 1, "Learning rate must range 0-1"
-            kwargs["callbacks"].append(LearningRateDecay(self.lr_decay))
+        if self.lr_decay:
+            if self.lr_decay == "DecreasingLearningRateScheduler":
+                kwargs["callbacks"].append(DecreasingLearningRateScheduler(self.learning_rate, scale=2, window=self.num_epochs / 40))
+            elif self.lr_decay != 1:
+                assert 0 < self.lr_decay < 1, "Learning rate must range 0-1"
+                kwargs["callbacks"].append(LearningRateDecay(self.lr_decay))
 
         if self.extra_callback:
             kwargs["callbacks"].append(self.extra_callback)
@@ -454,6 +457,60 @@ class AdaptiveLearningRateScheduler(keras.callbacks.Callback):
     def _scale_learning_rate(self, scale):
         return keras.backend.get_value(self.model.optimizer.lr) * scale
 
+
+class DecreasingLearningRateScheduler(keras.callbacks.Callback):
+    """Learning rate scheduler that decreases LR based on validation plateau"""
+
+    def __init__(self, initial_learning_rate, monitor="val_loss", scale=2., window=25):
+        super(DecreasingLearningRateScheduler, self).__init__()
+
+        self.monitor = monitor
+        self.initial_lr = initial_learning_rate
+        self.scale = float(scale)
+        self.window = window
+
+        self.metric_ = []
+        self.epochs_stale_ = 0
+        self.logger_ = general.get_class_logger(self)
+
+    def on_epoch_begin(self, epoch, logs={}):
+        assert hasattr(self.model.optimizer, "lr"), 'Optimizer must have a "lr" attribute.'
+
+        lr = self._get_learning_rate()
+
+        if lr:
+            self.logger_.debug("Setting learning rate at {} to {}".format(epoch, lr))
+            keras.backend.set_value(self.model.optimizer.lr, lr)
+
+    def on_epoch_end(self, epoch, logs={}):
+        metric = logs[self.monitor]
+        self.metric_.append(metric)
+
+    def _get_learning_rate(self):
+        if len(self.metric_) < self.window * 2:
+            return self.initial_lr
+
+        data = numpy.asarray(self.metric_)
+
+        best = data[:-1].min()
+
+        self.logger_.debug("Current score {}".format(data[-1]))
+
+        # we've improved
+        if data[-1] < best:
+            self.logger_.debug("Improved from {} to {}".format(best, data[-1]))
+            self.epochs_stale_ = 0
+        else:
+            self.epochs_stale_ += 1
+
+        if self.epochs_stale_ >= self.window:
+            self.epochs_stale_ = 0
+            return self._scale_learning_rate(1 / self.scale)
+
+        return None
+
+    def _scale_learning_rate(self, scale):
+        return keras.backend.get_value(self.model.optimizer.lr) * scale
 
 class LearningRateDecay(keras.callbacks.Callback):
     """Trying to get mode debug info...."""
