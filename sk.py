@@ -836,3 +836,21 @@ class StackedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.Regresso
         predictions = numpy.hstack([estimator.predict(X) for estimator in self.estimators_])
         arbiter_predictions = self.arbiter_.predict(predictions)
         return arbiter_predictions
+
+class ValidationWrapper(sklearn.base.BaseEstimator):
+    def __init__(self, base_estimator, val=0.1):
+        self.base_estimator = base_estimator
+        self.val = val
+
+        self.estimator_ = None
+
+    def fit(self, X, Y):
+        val_start = int((1 - self.val) * X.shape[0])
+        self.estimator_ = sklearn.base.clone(self.base_estimator).fit(X[:val_start], Y[:val_start])
+        return self
+
+    def predict(self, X):
+        return self.estimator_.predict(X)
+
+def with_val(model, val=0.1):
+    return ValidationWrapper(model, val)
