@@ -86,7 +86,9 @@ def compute_input_fairness(data_train, data_test, verbose=0, names=None):
     if verbose:
         for i, (feature_percentage, z_score, abs_z) in enumerate(zip(outlier_percents, mean_z_scores, mean_abs_z_scores)):
             name = names[i] if names is not None else i
-            print("Feature {}: {:.1f}% outliers, z: {:.3f}, abs(z): {:.3f}".format(name, 100. * feature_percentage, z_score, abs_z))
+
+            if feature_percentage > 0.01:
+                print("Feature {}: {:.1f}% outliers, z: {:.3f}, abs(z): {:.3f}".format(name, 100. * feature_percentage, z_score, abs_z))
 
     return mean_abs_z_scores.mean(), max(mean_abs_z_scores), max(outlier_percents)
 
