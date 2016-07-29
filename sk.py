@@ -806,6 +806,7 @@ class WeightedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.Regress
 
     def fit(self, X, Y):
         self.estimators_ = [sklearn.base.clone(estimator_template).fit(X, Y) for estimator_template in self.estimators]
+        return self
 
     def predict(self, X):
         predictions = numpy.dstack([estimator.predict(X) for estimator in self.estimators_])
@@ -831,6 +832,7 @@ class StackedEnsembleRegressor(sklearn.base.BaseEstimator, sklearn.base.Regresso
         val_predictions = numpy.hstack([estimator.predict(val_X) for estimator in self.estimators_])
 
         self.arbiter_ = sklearn.base.clone(self.arbiter).fit(val_predictions, val_Y)
+        return self
 
     def predict(self, X):
         predictions = numpy.hstack([estimator.predict(X) for estimator in self.estimators_])
