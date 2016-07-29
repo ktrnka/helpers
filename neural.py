@@ -244,7 +244,7 @@ def pad_to_batch(data, batch_size):
 
 
 class RnnRegressor(NnRegressor):
-    def __init__(self, num_units=50, time_steps=5, batch_size=100, num_epochs=100, unit="lstm", verbose=0,
+    def __init__(self, num_units=50, time_steps=5, batch_size=64, num_epochs=100, unit="lstm", verbose=0,
                  early_stopping=False, dropout=None, recurrent_dropout=None, loss="mse", input_noise=0.,
                  learning_rate=0.001, clip_gradient_norm=None, val=0, assert_finite=True, history_file=None,
                  pretrain=True, optimizer="adam", input_dropout=None, activation=None, posttrain=False, hidden_layer_sizes=None, stateful=False,
