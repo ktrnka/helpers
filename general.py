@@ -5,6 +5,7 @@ import datetime
 import inspect
 import logging
 import os.path
+import random
 import re
 import time
 from operator import itemgetter
@@ -115,21 +116,22 @@ def prepare_time_matrix(X, time_steps=5, fill_value=None):
 def add_temporal_noise(X, weight=0.05):
     assert isinstance(X, numpy.ndarray)
 
-    num_rows = X.shape[0]
+    X_noised = X.copy()
 
-    shape = (num_rows, num_rows)
+    for row in range(X_noised.shape[0] - 1):
+        previous_weight = random.uniform(0., weight)
+        next_weight = random.uniform(0., weight)
 
-    identity = numpy.eye(*shape)
+        # sum to 1: we're doing a weighted average
+        total = 1. + previous_weight + next_weight
+        ident = 1. / total
+        previous_weight /= total
+        next_weight /= total
 
-    previous = numpy.roll(numpy.diagflat(weight * numpy.random.rand(num_rows, 1)), 1, axis=0)
-    next = numpy.roll(numpy.diagflat(weight * numpy.random.rand(num_rows, 1)), -1, axis=0)
+        X_noised[row] = ident * X[row] + previous_weight * X[row - 1] + next_weight * X[row + 1]
 
-    deformation = identity + previous + next
-    row_sums = deformation.sum(axis=1)
+    return X_noised
 
-    normalized_deform = deformation / row_sums[:, numpy.newaxis]
-
-    return normalized_deform.dot(X)
 
 
 def _with_extra(filename, extra_info):
