@@ -3,6 +3,7 @@ import unittest
 import numpy
 import pandas
 
+from helpers.general import add_temporal_noise
 from ..features import TimeRange, get_event_series, add_lag_feature, roll
 from .. import general
 
@@ -81,6 +82,26 @@ class TimeShiftTests(unittest.TestCase):
         self.assertEqual(X_time[2, -3, 1], 0)
         self.assertEqual(X_time[2, -4, 1], -1)
         self.assertEqual(X_time[2, -5, 1], -1)
+
+    def test_temporal_noise(self):
+        ones = numpy.ones((10, 10))
+        self.assertAlmostEqual(0, (ones - add_temporal_noise(ones)).sum())
+
+        # random shouldn't be close
+        r = numpy.random.rand(10, 10)
+        self.assertNotAlmostEqual(0, (r - add_temporal_noise(r)).sum())
+
+        # try with identical random features
+        random_features = numpy.random.rand(1, 10)
+        ident_rows = numpy.repeat(random_features, 20, axis=0)
+        def_ident_rows = add_temporal_noise(ident_rows)
+        self.assertAlmostEqual(0, (ident_rows - def_ident_rows).sum())
+
+        # try with monotonic increasing
+        monotonic = numpy.repeat(numpy.asarray(range(1, 1001)).reshape((1000, 1)), 20, axis=1)
+        monotonic_deformed = add_temporal_noise(monotonic)
+
+        self.assertLessEqual((abs(monotonic - monotonic_deformed) / monotonic).mean(), .05)
 
 
 class TimeRangeTests(unittest.TestCase):

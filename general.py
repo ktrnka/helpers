@@ -112,6 +112,26 @@ def prepare_time_matrix(X, time_steps=5, fill_value=None):
     return X_time
 
 
+def add_temporal_noise(X, weight=0.05):
+    assert isinstance(X, numpy.ndarray)
+
+    num_rows = X.shape[0]
+
+    shape = (num_rows, num_rows)
+
+    identity = numpy.eye(*shape)
+
+    previous = numpy.roll(numpy.diagflat(weight * numpy.random.rand(num_rows, 1)), 1, axis=0)
+    next = numpy.roll(numpy.diagflat(weight * numpy.random.rand(num_rows, 1)), -1, axis=0)
+
+    deformation = identity + previous + next
+    row_sums = deformation.sum(axis=1)
+
+    normalized_deform = deformation / row_sums[:, numpy.newaxis]
+
+    return normalized_deform.dot(X)
+
+
 def _with_extra(filename, extra_info):
     base, ext = os.path.splitext(filename)
     return "".join([base, ".", extra_info, ext])
