@@ -78,7 +78,6 @@ class DataSet(object):
 
         if verbose >= 1:
             print([(self.feature_names[i], score) for i, score in pairs])
-            print("Dropping", [(self.feature_names[i]) for i, _ in pairs[num_features:]])
 
         indexes = [p[0] for p in pairs]
         indexes = indexes[:num_features]
