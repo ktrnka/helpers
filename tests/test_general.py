@@ -4,7 +4,7 @@ import numpy
 import pandas
 
 from helpers.general import add_temporal_noise
-from ..features import TimeRange, get_event_series, add_lag_feature, roll
+from ..features import TimeRange, get_event_series, add_roll, roll
 from .. import general
 
 
@@ -133,8 +133,8 @@ class FeatureTransformTests(unittest.TestCase):
         data = pandas.DataFrame(index=datetime_index)
         data["my_feature"] = data_series
 
-        add_lag_feature(data, "my_feature", 60, "1h")
-        add_lag_feature(data, "my_feature", -60, "next1h")
+        add_roll(data, "my_feature", 60, "1h")
+        add_roll(data, "my_feature", -60, "next1h")
 
         # make sure it's computing on the correct side of the index
         self.assertLess(data["my_feature"][60], data["my_feature_rolling_next1h"][60])

@@ -11,32 +11,32 @@ Helpers for derived features, particularly in Pandas.
 """
 
 
-def add_lag_feature(dataframe, feature, time_steps, time_suffix, drop=False, data_type=None, use_ewma=False, min_periods=None):
-    """Derive a rolling mean with the specified time steps"""
+def add_roll(dataframe, feature_name, time_steps, time_suffix, drop=False, data_type=None, use_ewma=False, min_periods=None):
+    """Add a rolling mean with the specified time steps"""
     assert isinstance(dataframe, pandas.DataFrame)
     assert isinstance(dataframe.index, pandas.DatetimeIndex)
 
-    name = feature + "_rolling_{}".format(time_suffix)
+    name = feature_name + "_rolling_{}".format(time_suffix)
     if use_ewma:
         name += "_ewma"
 
     if use_ewma:
-        dataframe[name] = dataframe[feature].ewm(span=time_steps, min_periods=min_periods).mean().bfill()
+        dataframe[name] = dataframe[feature_name].ewm(span=time_steps, min_periods=min_periods).mean().bfill()
     else:
         if time_steps < 0:
-            dataframe[name] = dataframe[feature][::-1].rolling(window=-time_steps, min_periods=min_periods).mean().bfill()[::-1]
+            dataframe[name] = dataframe[feature_name][::-1].rolling(window=-time_steps, min_periods=min_periods).mean().bfill()[::-1]
         else:
-            dataframe[name] = dataframe[feature].rolling(window=time_steps, min_periods=min_periods).mean().bfill()
+            dataframe[name] = dataframe[feature_name].rolling(window=time_steps, min_periods=min_periods).mean().bfill()
 
     if data_type:
         dataframe[name] = dataframe[name].astype(data_type)
 
     if drop:
-        dataframe.drop([feature], axis=1, inplace=True)
+        dataframe.drop([feature_name], axis=1, inplace=True)
 
 
 def roll(series, num_steps, function="mean", min_periods=None):
-    """Helper to roll a series forwards or backwards without inplace modification"""
+    """Helper to roll a series forwards or backwards without inplace modification, can specify mean or sum"""
     run_backwards = num_steps < 0
 
     # if num steps is negative we want the rolling to happen into the future so we reverse the data, roll, then reverse again
@@ -63,26 +63,27 @@ def roll(series, num_steps, function="mean", min_periods=None):
 
     return rolled
 
-def add_transformation_feature(dataframe, feature, transform, drop=False):
-    """Derive a feature with a simple function like log, sqrt, etc"""
+
+def add_transform(dataframe, feature_name, transform, drop=False):
+    """Add a feature with a simple function like log, sqrt, etc"""
     assert isinstance(dataframe, pandas.DataFrame)
-    new_name = feature + "_" + transform
+    new_name = feature_name + "_" + transform
 
     if transform == "log":
-        transformed = numpy.log(dataframe[feature] + 1)
+        transformed = numpy.log(dataframe[feature_name] + 1)
     elif transform == "square":
-        transformed = numpy.square(dataframe[feature])
+        transformed = numpy.square(dataframe[feature_name])
     elif transform == "sqrt":
-        transformed = numpy.sqrt(dataframe[feature])
+        transformed = numpy.sqrt(dataframe[feature_name])
     elif transform == "gradient":
-        transformed = numpy.gradient(dataframe[feature])
+        transformed = numpy.gradient(dataframe[feature_name])
     else:
         raise ValueError("Unknown transform {} specified".format(transform))
 
     dataframe[new_name] = transformed
 
     if drop:
-        dataframe.drop([feature], axis=1, inplace=True)
+        dataframe.drop([feature_name], axis=1, inplace=True)
 
 
 def get_event_series(datetime_index, event_ranges):
@@ -100,64 +101,6 @@ def get_event_series(datetime_index, event_ranges):
 
     return series
 
-
-def find_best_features(dataset, model, scorer, n_jobs=1):
-    import sklearn.cross_validation
-
-    baseline = sklearn.cross_validation.cross_val_score(model, dataset.inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
-    print("Baseline: {}".format(baseline))
-
-    # try deleting each feature
-    loo_scores = [None for _ in dataset.feature_names]
-    for i, name in enumerate(dataset.feature_names):
-        included = [j for j in range(dataset.inputs.shape[1]) if j != i]
-
-        reduced_inputs = dataset.inputs[:, included]
-        loo_scores[i] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
-        print("Leaving out {}: {}".format(name, loo_scores[i]))
-
-    # rank features by LOO scores
-    ranked_features = sorted(enumerate(loo_scores), key=itemgetter(1), reverse=True)
-    pruned_scores = [None for _ in ranked_features]
-    pruned_scores[0] = baseline
-
-    # assume that we dropping them in their LOO order is optimal (not generally true but it might work)
-    prune_set = set()
-    for i, _ in ranked_features[:-1]:
-        prune_set.add(i)
-        included = [j for j in range(dataset.inputs.shape[1]) if j not in prune_set]
-        reduced_inputs = dataset.inputs[:, included]
-        pruned_scores[len(prune_set)] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer, cv=dataset.splits, n_jobs=n_jobs).mean()
-
-        print("Score with {} features: {}".format(len(included), pruned_scores[len(prune_set)]))
-        print("\tDropped {}".format(dataset.feature_names[i]))
-
-
-def get_loo_scores(dataset, model, scorer, exclude_set):
-    import sklearn.cross_validation
-    loo_scores = {}
-    for i, name in enumerate(dataset.feature_names):
-        if i in exclude_set:
-            continue
-
-        included = [j for j in range(dataset.inputs.shape[1]) if j != i and j not in exclude_set]
-
-        reduced_inputs = dataset.inputs[:, included]
-        loo_scores[i] = sklearn.cross_validation.cross_val_score(model, reduced_inputs, dataset.outputs, scoring=scorer,
-                                                                 cv=dataset.splits).mean()
-    return loo_scores
-
-
-def rfe_slow(dataset, model, scorer):
-    dropped_set = set()
-    for num_dropped in range(dataset.inputs.shape[1] - 2):
-        loo_scores = get_loo_scores(dataset, model, scorer, dropped_set)
-        ranked_features = sorted(loo_scores.items(), key=itemgetter(1), reverse=True)
-        worst_feature, left_out_score = ranked_features[0]
-
-        dropped_set.add(worst_feature)
-
-        print("Dropped {}: {}".format(dataset.feature_names[worst_feature], left_out_score))
 
 class TimeRange(object):
     """Thin wrapper to help deal with events that span a range of time"""
