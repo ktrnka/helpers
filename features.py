@@ -1,13 +1,11 @@
-from __future__ import unicode_literals
 from __future__ import print_function
-
-from operator import itemgetter
+from __future__ import unicode_literals
 
 import numpy
 import pandas
 
 """
-Helpers for derived features, particularly in Pandas.
+Helpers for derived features in Pandas.
 """
 
 
@@ -107,3 +105,5 @@ class TimeRange(object):
     def __init__(self, start, end):
         self.start = start
         self.end = end
+
+
