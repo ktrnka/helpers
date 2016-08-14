@@ -11,6 +11,7 @@ import sklearn.pipeline
 import sklearn.ensemble
 
 from .. import sk
+from .. import feature_selection
 
 
 class HelperTests(unittest.TestCase):
@@ -156,3 +157,24 @@ class ModelTests(unittest.TestCase):
         error = sklearn.metrics.mean_squared_error(Y, model.predict(X))
 
         self.assertLess(error, baseline_error)
+
+
+class TestFeatureSelectors(unittest.TestCase):
+    def setUp(self):
+        self.X, self.Y = _build_data(10)
+        self.X[:, 0] = self.X[:, 0] ** 2  # break correlation so that FS picks 1 for unit test
+
+    def test_loi(self):
+        selector = feature_selection.LoiSelector(sklearn.linear_model.LinearRegression(), sk.rms_error)
+        scores = selector.score(self.X, self.Y, sklearn.cross_validation.KFold(self.X.shape[0], n_folds=3))
+        self.assertGreater(scores[1], scores[0])
+
+    def test_loo(self):
+        selector = feature_selection.LooSelector(sklearn.linear_model.LinearRegression(), sk.rms_error)
+        scores = selector.score(self.X, self.Y, sklearn.cross_validation.KFold(self.X.shape[0], n_folds=3))
+        self.assertGreater(scores[1], scores[0])
+
+    def test_deform(self):
+        selector = feature_selection.DeformSelector(sklearn.linear_model.LinearRegression(), sk.rms_error)
+        scores = selector.score(self.X.astype(numpy.float32), self.Y, sklearn.cross_validation.KFold(self.X.shape[0], n_folds=3))
+        self.assertGreater(scores[1], scores[0])

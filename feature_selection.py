@@ -28,7 +28,7 @@ def score_features_ridge(X, Y, alpha=0.01):
 
 class BaseFeatureSelectorCV(object):
     """Base class for cross-validated feature selection. It's here because sklearn doesn't have any such functionality"""
-    def __init__(self, std_weight=0.05):
+    def __init__(self, std_weight=-0.05):
         self.std_weight = std_weight
 
     def _score(self, X_train, Y_train, X_test, Y_test):
@@ -45,8 +45,8 @@ class BaseFeatureSelectorCV(object):
 
 
 class LoiSelector(BaseFeatureSelectorCV):
-    """Feature selection using leave-one-in with a model and scoring function. Doesn't require any particular internals about the model."""
-    def __init__(self, model, scorer, std_weight=0.05):
+    """Feature selection using leave-one-in, which measures the quality of the model with each feature independently."""
+    def __init__(self, model, scorer, std_weight=-0.05):
         super(LoiSelector, self).__init__(std_weight=std_weight)
         self.model = model
         self.scorer = scorer
@@ -59,6 +59,48 @@ class LoiSelector(BaseFeatureSelectorCV):
 
         return scores
 
+class LooSelector(BaseFeatureSelectorCV):
+    """Feature selection using leave-one-out, which measures the impact of removing each feature from the total set.
+    In comparison to leave-one-in, if the model handles combinations of features this can assess each feature's contrib."""
+    def __init__(self, model, scorer, std_weight=-0.05):
+        super(LooSelector, self).__init__(std_weight=std_weight)
+        self.model = model
+        self.scorer = scorer
+
+    def _score(self, X_train, Y_train, X_test, Y_test):
+        scores = [0 for _ in range(X_train.shape[1])]
+
+        self.model.fit(X_train, Y_train)
+        baseline_score = self.scorer(self.model, X_test, Y_test)
+
+        for i in range(X_train.shape[1]):
+            included = numpy.asarray([j for j in range(X_train.shape[1]) if j != i])
+            self.model.fit(X_train[:, included], Y_train)
+            scores[i] = baseline_score - self.scorer(self.model, X_test[:, included], Y_test)
+
+        return scores
+
+
+class DeformSelector(BaseFeatureSelectorCV):
+    def __init__(self, model, scorer, std_weight=-0.05):
+        super(DeformSelector, self).__init__(std_weight=std_weight)
+        self.model = model
+        self.scorer = scorer
+
+    @staticmethod
+    def deform_feature(X, i, adjustment=0.1):
+        X_def = X.copy()
+        X_def[:, i] *= 1 + adjustment
+        return X_def
+
+    def _score(self, X_train, Y_train, X_test, Y_test):
+        self.model.fit(X_train, Y_train)
+
+        baseline_score = self.scorer(self.model, X_test, Y_test)
+        deform_scores_increased = numpy.asarray([self.scorer(self.model, self.deform_feature(X_test, i, adjustment=0.1), Y_test) for i in range(X_train.shape[1])])
+        deform_scores_decreased = numpy.asarray([self.scorer(self.model, self.deform_feature(X_test, i, adjustment=-0.1), Y_test) for i in range(X_train.shape[1])])
+
+        return numpy.vstack((baseline_score - deform_scores_decreased, baseline_score - deform_scores_increased)).mean(axis=0)
 
 def score_features_random_forest(X, Y, n_jobs=-1):
     """Random forest feature importances, supports multivariate"""
