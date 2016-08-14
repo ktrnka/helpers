@@ -26,21 +26,38 @@ def score_features_ridge(X, Y, alpha=0.01):
     return sklearn.feature_selection.from_model._get_feature_importances(model)
 
 
-class BaseFeatureSelector(object):
-    def __init__(self):
+class BaseFeatureSelectorCV(object):
+    """Base class for cross-validated feature selection. It's here because sklearn doesn't have any such functionality"""
+    def __init__(self, std_weight=0.05):
+        self.std_weight = std_weight
+
+    def _score(self, X_train, Y_train, X_test, Y_test):
         pass
 
-    def score(self, X, Y):
-        pass
-
-    def cv_score(self, X, Y, splits, stddev_weight=0.05):
+    def score(self, X, Y, splits):
         score_matrix = []
         for train, test in splits:
-            score_matrix.append(self.score(X[train], Y[train]))
+            score_matrix.append(self._score(X[train], Y[train], X[test], Y[test]))
 
         score_matrix = numpy.asarray(score_matrix)
-        feature_scores = score_matrix.mean(axis=0) + stddev_weight * score_matrix.std(axis=0)
+        feature_scores = score_matrix.mean(axis=0) + self.std_weight * score_matrix.std(axis=0)
         return feature_scores
+
+
+class LoiSelector(BaseFeatureSelectorCV):
+    """Feature selection using leave-one-in with a model and scoring function. Doesn't require any particular internals about the model."""
+    def __init__(self, model, scorer, std_weight=0.05):
+        super(LoiSelector, self).__init__(std_weight=std_weight)
+        self.model = model
+        self.scorer = scorer
+
+    def _score(self, X_train, Y_train, X_test, Y_test):
+        scores = [0 for _ in range(X_train.shape[1])]
+        for i in range(X_train.shape[1]):
+            self.model.fit(X_train[:, [i]], Y_train)
+            scores[i] = self.scorer(self.model, X_test[:, [i]], Y_test)
+
+        return scores
 
 
 def score_features_random_forest(X, Y, n_jobs=-1):
